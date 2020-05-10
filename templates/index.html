@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+<script src="{{ url_for('static', filename='js/jquery-3.5.1.min.js') }}"></script>
+
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Regression Testing</title>
+    <style> 
+    	body { 
+    		background-color: #F5F5F5; 
+    	} 
+    	h1 { 
+    		text-align: center; 
+    		color: black; 
+    	}
+    	h2 {
+    		text-align:left; 
+    		text-decoration: underline;
+    		color:black;
+    	}
+        h3 {
+            text-align:left;
+            color:black;
+        }
+    	table.dataframe, .dataframe th, .dataframe td {
+		  border-collapse: collapse;
+		  text-align: center;
+		  padding: 10px;
+		  margin-bottom: 20px;
+		  font-size: 0.9em;
+		}
+        select {
+            float: right;
+            width: 140px;
+            margin-right: 40px;
+        }
+    	.sumcont {
+    		width: 68%; 
+    		float: right; 
+    	}
+    	.sumdisc {
+    		width: 31.25%; 
+    		float: left; 
+    	}
+    	.sumcont2 {
+    		width: 68%; 
+    		float: left; 
+    	}
+        .sumdisc2 {
+            width: 31.25%; 
+            float: right; 
+        }
+        .container {
+            overflow: hidden; 
+        }
+        .centeredgraph {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 72%;
+        }
+	</style> 
+</head>
+<body>
+<div class="container">
+    <div class="row">
+    	<div class="col-md-6">
+    		<h1> Regression Testing </h1>
+		    <h2> Overview </h2>
+		    <div class="container">
+			    {% for table in sumtables %}
+			    	{{ table|safe }}
+			    {% endfor %}
+			</div>
+            <div class="details">
+                {% for var in howcleanedvars %}
+                    <p>{{ var }}</p>
+                {% endfor %}
+            </div>
+            <h2> Analysis </h2>
+            <select class="form-control" id ='rawHistchoice'>
+                {% for varname in allvars %}
+                    <option value="{{ varname }}" >{{ varname }}</option>
+                {% endfor %}
+            </select>
+            <div class="centeredgraph" id="RawHistogram">
+                <script>
+                    var graph = {{rawdistplot | safe}};
+                    var layout = {
+                      bargap: 0.05, 
+                      bargroupgap: 0.2, 
+                      title: "Raw Distribution", 
+                      xaxis: {title: "Value"},
+                      plot_bgcolor:"#F5F5F5",
+                      paper_bgcolor:"#F5F5F5",
+                      margin: {
+                        l: 50,
+                        r: 25,
+                        pad: 15
+                        }
+                    };
+                    Plotly.plot('RawHistogram',graph,layout);
+                </script>
+            </div>
+            <select class="form-control" id ='cleanHistchoice'>
+                {% for varname in cleanvars %}
+                    <option value="{{ varname }}" >{{ varname }}</option>
+                {% endfor %}
+            </select>
+            <div class="centeredgraph" id="CleanHistogram">
+                <script>
+                    var graph = {{cleandistplot | safe}};
+                    var layout = {
+                      bargap: 0.05, 
+                      bargroupgap: 0.2, 
+                      title: "Clean Distribution", 
+                      xaxis: {title: "Value"},
+                      plot_bgcolor:"#F5F5F5",
+                      paper_bgcolor:"#F5F5F5",
+                      margin: {
+                        l: 50,
+                        r: 25,
+                        pad: 15
+                        }
+                    };
+                    Plotly.plot('CleanHistogram',graph,layout);
+                </script>
+            </div>
+		</div>
+    </div>
+    <script>
+        $('#rawHistchoice').on('change',function(){
+            var layout = {
+                bargap: 0.05, 
+                bargroupgap: 0.2, 
+                title: "Raw Distribution", 
+                xaxis: {title: "Value"},
+                plot_bgcolor:"#F5F5F5",
+                paper_bgcolor:"#F5F5F5",
+                margin: {
+                    l: 50,
+                    r: 25,
+                    pad: 15
+                    }
+                };
+            $.ajax({
+                url: "/fullhistchange",
+                type: "GET",
+                contentType: 'application/json;charset=UTF-8',
+                data: {
+                    'histchoice': document.getElementById('rawHistchoice').value,
+
+                },
+                dataType:"json",
+                success: function (data) {
+                    Plotly.newPlot('RawHistogram', data, layout);
+                }
+            });
+        })
+        $('#cleanHistchoice').on('change',function(){
+            var layout = {
+                bargap: 0.05, 
+                bargroupgap: 0.2, 
+                title: "Clean Distribution", 
+                xaxis: {title: "Value"},
+                plot_bgcolor:"#F5F5F5",
+                paper_bgcolor:"#F5F5F5",
+                margin: {
+                    l: 50,
+                    r: 25,
+                    pad: 15
+                    }
+                };
+            $.ajax({
+                url: "/cleanhistchange",
+                type: "GET",
+                contentType: 'application/json;charset=UTF-8',
+                data: {
+                    'histchoice': document.getElementById('cleanHistchoice').value,
+                },
+                dataType:"json",
+                success: function (data) {
+                    Plotly.newPlot('CleanHistogram', data, layout);
+                }
+            });
+        })
+    </script>
+</div>
+</body>
+</html>
