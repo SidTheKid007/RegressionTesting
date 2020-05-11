@@ -62,6 +62,13 @@
             margin-right: auto;
             width: 72%;
         }
+        .rightgraph {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 480px;
+            height: 480px;
+        }
 	</style> 
 </head>
 <body>
@@ -129,6 +136,25 @@
                     Plotly.plot('CleanHistogram',graph,layout);
                 </script>
             </div>
+            <div class="rightgraph" id="CorrelationMatrix">
+                <script>
+                    var graph = {{heatmap | safe}};
+                    var layout = {
+                      title: "Correlations", 
+                      plot_bgcolor:"#F5F5F5",
+                      paper_bgcolor:"#F5F5F5",
+                      xaxis: {
+                        showticklabels:false,
+                        ticks: ''
+                      },
+                      yaxis: {
+                        showticklabels:false,
+                        ticks: ''
+                      }
+                    };
+                    Plotly.plot('CorrelationMatrix',graph,layout);
+                </script>
+            </div>
 		</div>
     </div>
     <script>
@@ -146,6 +172,7 @@
                     pad: 15
                     }
                 };
+                // take out layout to clean code?
             $.ajax({
                 url: "/fullhistchange",
                 type: "GET",

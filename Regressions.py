@@ -30,11 +30,11 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
-        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3])
+        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4])
     else:
         return render_template('error-page.html')
         # replace this with a stylized error pade like github
-    #if futureflag == True:
+    # if futureflag == True:
     #    pred = predict(futureflag)
     #    in predict check if columns are named the same as in train
     #    error handling to make sure data names and internals are same
@@ -59,9 +59,11 @@ def fullAnalysis(maindata):
     cleanedvars = revealClean()
     rawdistplot = makeDists(fulldata, fulldata.columns.values[0])
     cleandistplot = makeDists(cleandata, cleandata.columns.values[0])
-    #outdata = outliers(cleandata) - optional <remove outliers>
-    #normdata = normalize(cleandata) - optional <normalization>
-    results = [summary, cleanedvars, rawdistplot, cleandistplot]
+    # rfelist = rfeAlgo(cleandata)
+    heatmap = corrMatrix(cleandata)
+    # outdata = outliers(cleandata) - optional <remove outliers>
+    # normdata = normalize(cleandata) - optional <normalization>
+    results = [summary, cleanedvars, rawdistplot, cleandistplot, heatmap]
     return results
     # return array of all visuals needed
 
@@ -140,7 +142,7 @@ def mixsummarize(fulldata):
 
 def cleanColumns(fulldata):
 	session["fulldata"] = fulldata
-	# drop rows with more than 25% na
+	# drop cols with more than 25% na
 	cleandata = fulldata.dropna()
 	cleandata = cleandata.sort_index(axis = 0) 
 	targetvar = cleandata.columns.values[-1]
@@ -152,9 +154,13 @@ def cleanColumns(fulldata):
 	session["bigDisc"] = []
 	for varname in cleandata.columns.values:
 	    if(cleandata[varname].dtype != np.float64 and cleandata[varname].dtype != np.int64):
-	        cleandata = discClean(cleandata, varname)
+	    	try:
+	    		cleandata[varname] =  pd.to_numeric(cleandata[varname])
+	    	except Exception:
+	    		cleandata = discClean(cleandata, varname)
 	cleandata = cleandata.dropna()
-	#check for numbers (convert all to numeric at end to be safe)?
+	# check for numbers (convert all to numeric at end to be safe)?
+	cleandata = cleandata.sort_index(axis = 1) 
 	cleandata[targetvar] = targetdata
 	session["cleandata"] = cleandata
 	return cleandata
@@ -162,7 +168,7 @@ def cleanColumns(fulldata):
 
 
 def discClean(cleandata, varname):
-	#do other checks to ensure data is a datetime
+	# do other checks to ensure data is a datetime
 	try:
 	    cleandata[varname] =  pd.to_datetime(cleandata[varname])
 	    cleandata = datetimeDisc(cleandata, varname)
@@ -182,6 +188,7 @@ def datetimeDisc(cleandata, varname):
 	cleandata[varname + '_year'] = cleandata[varname].dt.year
 	cleandata[varname + '_month'] = cleandata[varname].dt.month
 	cleandata[varname + '_day'] = cleandata[varname].dt.day
+	# add others? (ex. season, day of year, day of week?)
 	cleandata = cleandata.drop([varname], axis=1)
 	session["datetimes"].append(varname)
 	return cleandata
@@ -251,6 +258,21 @@ def cleanchangedist():
     cleandata = session["cleandata"]
     graphJSON = makeDists(cleandata, varname)
     return graphJSON
+    # Split into files later ((html, css, js),(python, flask))
+
+
+def rfeAlgo(cleandata):
+	return ''
+
+
+def corrMatrix(cleandata):
+	heatmap = cleandata.corr().iloc[::-1].values
+	labels = cleandata.columns.values
+	data = [go.Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True)]
+	# use bluescale and absolute value here?
+	# drop above diagonal?
+	graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
+	return graphJSON
 
 
 if __name__ == '__main__':
