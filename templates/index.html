@@ -63,16 +63,22 @@
             width: 72%;
         }
         .rferank {
-            float: left;
+            float: right;
             width: 18%;
             height: 640px;
-            padding-left: 80px;
         }
         .rightgraph {
             float: right;
             width: 60%;
             height: 640px;
-            padding-right: 7%;
+            padding-right: 8%;
+            padding-left: 6%;
+        }
+        .mlgraph{
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 72%;
         }
 	</style> 
 </head>
@@ -101,7 +107,7 @@
             <div class="centeredgraph" id="RawHistogram">
                 <script>
                     var graph = {{rawdistplot | safe}};
-                    var layout = {
+                    var barlayout = {
                       bargap: 0.05, 
                       bargroupgap: 0.2, 
                       title: "Raw Distribution", 
@@ -114,7 +120,7 @@
                         pad: 15
                         }
                     };
-                    Plotly.plot('RawHistogram',graph,layout);
+                    Plotly.plot('RawHistogram',graph,barlayout);
                 </script>
             </div>
             <select class="form-control" id ='cleanHistchoice'>
@@ -125,7 +131,7 @@
             <div class="centeredgraph" id="CleanHistogram">
                 <script>
                     var graph = {{cleandistplot | safe}};
-                    var layout = {
+                    var barlayout = {
                       bargap: 0.05, 
                       bargroupgap: 0.2, 
                       title: "Clean Distribution", 
@@ -138,16 +144,15 @@
                         pad: 15
                         }
                     };
-                    Plotly.plot('CleanHistogram',graph,layout);
+                    Plotly.plot('CleanHistogram',graph,barlayout);
                 </script>
             </div>
             <div class="container">
-                {{ rfelist|safe }}
                 <div class="rightgraph" id="CorrelationMatrix">
                     <script>
                         // format table
                         var graph = {{heatmap | safe}};
-                        var layout = {
+                        var corrlayout = {
                           title: "Correlations", 
                           plot_bgcolor:"#F5F5F5",
                           paper_bgcolor:"#F5F5F5",
@@ -162,21 +167,42 @@
                           margin: {
                             t: 40,
                             r: 0,
-                            b: 0,
+                            b: 10,
                             l: 0,
                             pad: 15
                             }
                         };
-                        // minimize top, bottom, and sidebar
-                        Plotly.plot('CorrelationMatrix',graph,layout);
+                        Plotly.plot('CorrelationMatrix',graph,corrlayout);
                     </script>
                 </div>
+                {{ rfelist|safe }}
+            </div>
+            <h2> ML Models </h2>
+            <select class="form-control" id ='LinRegchoice'>
+                <option value="Training">Training</option>
+                <option value="Testing">Testing</option>
+            </select>
+            <div class="mlgraph" id="LinRegresults">
+                <script>
+                    var graph = {{linreggraph | safe}};
+                    var lineslayout = {
+                      title: "Linear Regression",
+                      plot_bgcolor:"#F5F5F5",
+                      paper_bgcolor:"#F5F5F5",
+                      margin: {
+                        l: 50,
+                        r: 25,
+                        pad: 15
+                        }
+                    };
+                    Plotly.plot('LinRegresults',graph,lineslayout);
+                </script>
             </div>
 		</div>
     </div>
     <script>
         $('#rawHistchoice').on('change',function(){
-            var layout = {
+            var barlayout = {
                 bargap: 0.05, 
                 bargroupgap: 0.2, 
                 title: "Raw Distribution", 
@@ -189,45 +215,46 @@
                     pad: 15
                     }
                 };
-                // take out layout to clean code?
             $.ajax({
                 url: "/fullhistchange",
                 type: "GET",
                 contentType: 'application/json;charset=UTF-8',
                 data: {
-                    'histchoice': document.getElementById('rawHistchoice').value,
-
+                    'histchoice': document.getElementById('rawHistchoice').value
                 },
                 dataType:"json",
                 success: function (data) {
-                    Plotly.newPlot('RawHistogram', data, layout);
+                    Plotly.newPlot('RawHistogram', data, barlayout);
                 }
             });
         })
         $('#cleanHistchoice').on('change',function(){
-            var layout = {
-                bargap: 0.05, 
-                bargroupgap: 0.2, 
-                title: "Clean Distribution", 
-                xaxis: {title: "Value"},
-                plot_bgcolor:"#F5F5F5",
-                paper_bgcolor:"#F5F5F5",
-                margin: {
-                    l: 50,
-                    r: 25,
-                    pad: 15
-                    }
-                };
+            barlayout['title'] = "Clean Distribution";
             $.ajax({
                 url: "/cleanhistchange",
                 type: "GET",
                 contentType: 'application/json;charset=UTF-8',
                 data: {
-                    'histchoice': document.getElementById('cleanHistchoice').value,
+                    'histchoice': document.getElementById('cleanHistchoice').value
                 },
                 dataType:"json",
                 success: function (data) {
-                    Plotly.newPlot('CleanHistogram', data, layout);
+                    Plotly.newPlot('CleanHistogram', data, barlayout);
+                }
+            });
+        })
+        $('#LinRegchoice').on('change',function(){
+            lineslayout['title'] = "Linear Regression"
+            $.ajax({
+                url: "/linregchange",
+                type: "GET",
+                contentType: 'application/json;charset=UTF-8',
+                data: {
+                    'linregchoice': document.getElementById('LinRegchoice').value
+                },
+                dataType:"json",
+                success: function (data) {
+                    Plotly.newPlot('LinRegresults', data, lineslayout);
                 }
             });
         })

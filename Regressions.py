@@ -32,10 +32,9 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
-        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5])
+        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6])
     else:
         return render_template('error-page.html')
-        # replace this with a stylized error pade like github
     # if futureflag == True:
     #    pred = predict(futureflag)
     #    in predict check if columns are named the same as in train
@@ -59,13 +58,16 @@ def fullAnalysis(maindata):
     summary = summarize(fulldata)
     cleandata = cleanColumns(fulldata)
     # outdata = outliers(cleandata) - optional <remove outliers>
-    cleanedvars = revealClean()
+    howcleanedvars = revealClean()
     rawdistplot = makeDists(fulldata, fulldata.columns.values[0])
     cleandistplot = makeDists(cleandata, cleandata.columns.values[0])
     # normdata = normalize(cleandata) - optional <normalization>
     heatmap = corrMatrix(cleandata)
     rfelist = rfeAlgo(cleandata)
-    results = [summary, cleanedvars, rawdistplot, cleandistplot, heatmap, rfelist]
+    splitdata = splitTrainTest(cleandata, .8)
+    linreg = linearRegression(splitdata)
+    linreggraph = graphModelResults(linreg, 'Training')
+    results = [summary, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph]
     return results
     # return array of all visuals needed
 
@@ -81,7 +83,6 @@ def readfile(maindata):
 
 
 def summarize(fulldata):
-    # IMPORTANT
     # Clean up and extract commons later
     # Add names for boxes
     summary =  fulldata.describe(include = 'all').T
@@ -143,13 +144,19 @@ def mixsummarize(fulldata):
 
 
 def cleanColumns(fulldata):
+	# Clean target var too
 	session["fulldata"] = fulldata
-	# drop cols with more than 25% na
 	cleandata = fulldata.dropna()
 	cleandata = cleandata.sort_index(axis = 0) 
-	targetvar = cleandata.columns.values[-1]
+	varnames = cleandata.columns.values
+	targetvar = varnames[-1]
 	targetdata = cleandata[targetvar].values
 	cleandata = cleandata.drop([targetvar], axis=1)
+	nacols = cleandata.isna().sum().values
+	for k in range(len(nacols)):
+		if (nacols[k]/len(cleandata) > .1):
+			dropvar = varnames[k]
+			cleandata = cleandata.drop([dropvar], axis=1)
 	session["datetimes"] = []
 	session["smallDisc"] = []
 	session["medDisc"] = []
@@ -160,10 +167,10 @@ def cleanColumns(fulldata):
 	    		cleandata[varname] =  pd.to_numeric(cleandata[varname])
 	    	except Exception:
 	    		cleandata = discClean(cleandata, varname)
-	cleandata = cleandata.dropna()
 	# check for numbers (convert all to numeric at end to be safe)?
 	cleandata = cleandata.sort_index(axis = 1) 
 	cleandata[targetvar] = targetdata
+	cleandata = cleandata.dropna()
 	session["cleandata"] = cleandata
 	return cleandata
     # add clean colums with appending train and prod
@@ -246,6 +253,7 @@ def makeDists(cleandata, varname):
 	graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
 	return graphJSON
 
+
 @app.route('/fullhistchange', methods=['GET', 'POST'])
 def fullchangedist():
     varname = request.args['histchoice']
@@ -275,8 +283,9 @@ def rfeAlgo(cleandata):
 	ranks['Rank'] = rferanks
 	ranks = ranks.sort_values('Rank', ascending=True)
 	ranks = ranks.set_index('Rank')
-	ranks = ranks.head(15).to_html(classes='rferank')
+	ranks = ranks.head(20).to_html(classes='rferank')
 	# test bigger data and change 15 to max stretch
+	# add corr matrix results?
 	return ranks
 
 
@@ -288,6 +297,64 @@ def corrMatrix(cleandata):
 	# drop above diagonal?
 	graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
 	return graphJSON
+
+
+def splitTrainTest(cleandata, line):
+	train = cleandata[0:(round(len(cleandata)*line))] 
+	test = cleandata[(round(len(cleandata)*line)):]
+	targetvar = cleandata.columns.values[-1]
+	trainindex = train.index.values
+	testindex = test.index.values
+	trainoutput = train[targetvar].values
+	testoutput = test[targetvar].values
+	traininput = train.drop([targetvar], axis=1).values
+	testinput = test.drop([targetvar], axis=1).values
+	splitdata = [trainindex, testindex, traininput, testinput, trainoutput, testoutput]
+	return splitdata
+
+
+def linearRegression(splitdata):
+	trainindex = splitdata[0]
+	testindex = splitdata[1]
+	traininput = splitdata[2]
+	testinput = splitdata[3]
+	trainoutput = splitdata[4]
+	testoutput = splitdata[5]
+	model = LinearRegression().fit(traininput, trainoutput)
+	predictedtrain = model.predict(traininput)
+	predictedtest = model.predict(testinput)
+	results = [trainindex, testindex, trainoutput, predictedtrain, testoutput, predictedtest]
+	session["LinRegResults"] = results
+	return results
+
+
+def graphModelResults(results, split):
+	trainindex = results[0]
+	testindex = results[1]
+	trainoutput = results[2]
+	predictedtrain = results[3]
+	testoutput = results[4]
+	predictedtest = results[5]
+	if split == 'Training':
+		data = [go.Scatter(x=trainindex, y=trainoutput, name='Ground Truth'), go.Scatter(x=trainindex, y=predictedtrain, name='Prediction')]
+		graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
+		return graphJSON
+	else:
+		data = [go.Scatter(x=testindex, y=testoutput, name='Ground Truth'), go.Scatter(x=testindex, y=predictedtest, name='Prediction')]
+		graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
+		return graphJSON
+
+
+@app.route('/linregchange', methods=['GET', 'POST'])
+def changelinreg():
+    split = request.args['linregchoice']
+    results = session["LinRegResults"]
+    graphJSON = graphModelResults(results, split)
+    return graphJSON
+
+
+def tableModelResults(results):
+	return ''
 
 
 if __name__ == '__main__':
