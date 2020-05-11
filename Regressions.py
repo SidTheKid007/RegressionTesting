@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, session
 from flask_session import Session
-import plotly
-import plotly.graph_objs as go
-import pandas as pd
 import numpy as np
+import pandas as pd
 import json
 from os import path
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import LinearRegression
+import plotly
+import plotly.graph_objs as go
 
 
 app = Flask(__name__)
@@ -30,7 +32,7 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
-        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4])
+        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5])
     else:
         return render_template('error-page.html')
         # replace this with a stylized error pade like github
@@ -56,14 +58,14 @@ def fullAnalysis(maindata):
     fulldata = readfile(maindata)
     summary = summarize(fulldata)
     cleandata = cleanColumns(fulldata)
+    # outdata = outliers(cleandata) - optional <remove outliers>
     cleanedvars = revealClean()
     rawdistplot = makeDists(fulldata, fulldata.columns.values[0])
     cleandistplot = makeDists(cleandata, cleandata.columns.values[0])
-    # rfelist = rfeAlgo(cleandata)
-    heatmap = corrMatrix(cleandata)
-    # outdata = outliers(cleandata) - optional <remove outliers>
     # normdata = normalize(cleandata) - optional <normalization>
-    results = [summary, cleanedvars, rawdistplot, cleandistplot, heatmap]
+    heatmap = corrMatrix(cleandata)
+    rfelist = rfeAlgo(cleandata)
+    results = [summary, cleanedvars, rawdistplot, cleandistplot, heatmap, rfelist]
     return results
     # return array of all visuals needed
 
@@ -262,13 +264,26 @@ def cleanchangedist():
 
 
 def rfeAlgo(cleandata):
-	return ''
+	targetvar = cleandata.columns.values[-1]
+	output = cleandata[targetvar].values
+	inputs = cleandata.drop([targetvar], axis=1)
+	rfemodel = LinearRegression()
+	rfe = RFE(rfemodel, 1)
+	fitrfe = rfe.fit(inputs.values, output)
+	ranks = pd.DataFrame((inputs.columns.values), columns=['Feature'])
+	rferanks = fitrfe.ranking_
+	ranks['Rank'] = rferanks
+	ranks = ranks.sort_values('Rank', ascending=True)
+	ranks = ranks.set_index('Rank')
+	ranks = ranks.head(15).to_html(classes='rferank')
+	# test bigger data and change 15 to max stretch
+	return ranks
 
 
 def corrMatrix(cleandata):
 	heatmap = cleandata.corr().iloc[::-1].values
 	labels = cleandata.columns.values
-	data = [go.Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True)]
+	data = [go.Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True, showscale=False)]
 	# use bluescale and absolute value here?
 	# drop above diagonal?
 	graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)

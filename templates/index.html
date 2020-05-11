@@ -62,12 +62,17 @@
             margin-right: auto;
             width: 72%;
         }
+        .rferank {
+            float: left;
+            width: 18%;
+            height: 640px;
+            padding-left: 80px;
+        }
         .rightgraph {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            width: 480px;
-            height: 480px;
+            float: right;
+            width: 60%;
+            height: 640px;
+            padding-right: 7%;
         }
 	</style> 
 </head>
@@ -136,24 +141,36 @@
                     Plotly.plot('CleanHistogram',graph,layout);
                 </script>
             </div>
-            <div class="rightgraph" id="CorrelationMatrix">
-                <script>
-                    var graph = {{heatmap | safe}};
-                    var layout = {
-                      title: "Correlations", 
-                      plot_bgcolor:"#F5F5F5",
-                      paper_bgcolor:"#F5F5F5",
-                      xaxis: {
-                        showticklabels:false,
-                        ticks: ''
-                      },
-                      yaxis: {
-                        showticklabels:false,
-                        ticks: ''
-                      }
-                    };
-                    Plotly.plot('CorrelationMatrix',graph,layout);
-                </script>
+            <div class="container">
+                {{ rfelist|safe }}
+                <div class="rightgraph" id="CorrelationMatrix">
+                    <script>
+                        // format table
+                        var graph = {{heatmap | safe}};
+                        var layout = {
+                          title: "Correlations", 
+                          plot_bgcolor:"#F5F5F5",
+                          paper_bgcolor:"#F5F5F5",
+                          xaxis: {
+                            showticklabels:false,
+                            ticks: ''
+                          },
+                          yaxis: {
+                            showticklabels:false,
+                            ticks: ''
+                          },
+                          margin: {
+                            t: 40,
+                            r: 0,
+                            b: 0,
+                            l: 0,
+                            pad: 15
+                            }
+                        };
+                        // minimize top, bottom, and sidebar
+                        Plotly.plot('CorrelationMatrix',graph,layout);
+                    </script>
+                </div>
             </div>
 		</div>
     </div>
