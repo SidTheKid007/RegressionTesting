@@ -7,6 +7,7 @@ from os import path
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
+from xgboost import XGBRegressor
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
 import plotly
 import plotly.graph_objs as go
@@ -34,7 +35,7 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
-        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11])
+        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13])
     else:
         return render_template('error-page.html')
     # if futureflag == True:
@@ -79,7 +80,11 @@ def fullAnalysis(maindata):
     extreegraph = graphModelResults(extree, 'Training')
     extreeresults = metricModelResults(extree, cleandata)
     extreetable = extreeresults[1]
-    results = [summary, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, ranforgraph, ranfortable, extreegraph, extreetable]
+    xgboost = xgBoost(splitdata)
+    xgboostgraph = graphModelResults(xgboost, 'Training')
+    xgboostresults = metricModelResults(xgboost, cleandata)
+    xgboosttable = xgboostresults[1]
+    results = [summary, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, ranforgraph, ranfortable, extreegraph, extreetable, xgboostgraph, xgboosttable]
     return results
     # return array of all visuals needed
 
@@ -371,6 +376,21 @@ def extraTrees(splitdata):
 	return results
 
 
+def xgBoost(splitdata):
+	trainindex = splitdata[0]
+	testindex = splitdata[1]
+	traininput = splitdata[2]
+	testinput = splitdata[3]
+	trainoutput = splitdata[4]
+	testoutput = splitdata[5]
+	model = XGBRegressor().fit(traininput, trainoutput)
+	predictedtrain = model.predict(traininput)
+	predictedtest = model.predict(testinput)
+	results = [trainindex, testindex, trainoutput, predictedtrain, testoutput, predictedtest]
+	session["XGBoostResults"] = results
+	return results
+
+
 def graphModelResults(results, split):
 	trainindex = results[0]
 	testindex = results[1]
@@ -398,6 +418,10 @@ def changesplit():
     	results = session["RanForResults"]
     elif model == 'Extra Trees':
     	results = session["ExTreeResults"]
+    elif model == 'XGBoost':
+    	results = session["XGBoostResults"]
+    else:
+    	results = session["LinRegResults"]
     graphJSON = graphModelResults(results, split)
     return graphJSON
 

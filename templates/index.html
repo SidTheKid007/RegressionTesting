@@ -271,6 +271,34 @@
                 </div>
                 {{ extreetable|safe }}
             </div>
+            <br>
+            <select class="form-control" id='XGBoostchoice' name="XGBoost">
+                <option value="Training">Training</option>
+                <option value="Testing">Testing</option>
+            </select>
+            <div class="mlgraph" id="XGBoostresults">
+                <script>
+                    var graph = {{xgboostgraph | safe}};
+                    var lineslayout = {
+                      title: document.getElementById('XGBoostchoice').name,
+                      plot_bgcolor:"#F5F5F5",
+                      paper_bgcolor:"#F5F5F5",
+                      margin: {
+                        l: 50,
+                        r: 25,
+                        pad: 15
+                        }
+                    };
+                    // Add all layout scripts to top
+                    Plotly.plot('XGBoostresults',graph,lineslayout);
+                </script>
+            </div>
+            <div class="container">
+                <div class="forcespace">
+                    <p></p>
+                </div>
+                {{ xgboosttable|safe }}
+            </div>
 		</div>
     </div>
     <script>
@@ -361,6 +389,22 @@
                 dataType:"json",
                 success: function (data) {
                     Plotly.newPlot('ExTreeresults', data, lineslayout);
+                }
+            });
+        })
+        $('#XGBoostchoice').on('change',function(){
+            lineslayout['title'] = document.getElementById('XGBoostchoice').name
+            $.ajax({
+                url: "/splitchange",
+                type: "GET",
+                contentType: 'application/json;charset=UTF-8',
+                data: {
+                    'splitchoice': document.getElementById('XGBoostchoice').value,
+                    'algorithm': document.getElementById('XGBoostchoice').name
+                },
+                dataType:"json",
+                success: function (data) {
+                    Plotly.newPlot('XGBoostresults', data, lineslayout);
                 }
             });
         })
