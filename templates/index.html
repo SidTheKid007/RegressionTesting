@@ -26,16 +26,17 @@
             color:black;
         }
     	table.dataframe, .dataframe th, .dataframe td {
-		  border-collapse: collapse;
-		  text-align: center;
-		  padding: 10px;
-		  margin-bottom: 20px;
-		  font-size: 0.9em;
-		}
+            border-collapse: collapse;
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
         select {
             float: right;
-            width: 140px;
-            margin-right: 40px;
+            width: 10.5%;
+            margin-right: 2.5%;
+            font-size: 0.9em;
         }
     	.sumcont {
     		width: 68%; 
@@ -74,11 +75,20 @@
             padding-right: 8%;
             padding-left: 6%;
         }
-        .mlgraph{
+        .mlgraph {
             display: block;
             margin-left: auto;
             margin-right: auto;
             width: 72%;
+        }
+        .forcespace {
+            float: left;
+            padding-left: 9%;
+            padding-right: 0%;
+        }
+        .resulttable {
+            float: left;
+            width: 82%;
         }
 	</style> 
 </head>
@@ -178,7 +188,7 @@
                 {{ rfelist|safe }}
             </div>
             <h2> ML Models </h2>
-            <select class="form-control" id ='LinRegchoice'>
+            <select class="form-control" id='LinRegchoice' name="Linear Regression">
                 <option value="Training">Training</option>
                 <option value="Testing">Testing</option>
             </select>
@@ -186,7 +196,7 @@
                 <script>
                     var graph = {{linreggraph | safe}};
                     var lineslayout = {
-                      title: "Linear Regression",
+                      title: document.getElementById('LinRegchoice').name,
                       plot_bgcolor:"#F5F5F5",
                       paper_bgcolor:"#F5F5F5",
                       margin: {
@@ -195,8 +205,71 @@
                         pad: 15
                         }
                     };
+                    // Add all layout scripts to top
                     Plotly.plot('LinRegresults',graph,lineslayout);
                 </script>
+            </div>
+            <div class="container">
+                <div class="forcespace">
+                    <p></p>
+                </div>
+                {{ linregtable|safe }}
+            </div>
+            <br>
+            <select class="form-control" id='RanForchoice' name="Random Forrest">
+                <option value="Training">Training</option>
+                <option value="Testing">Testing</option>
+            </select>
+            <div class="mlgraph" id="RanForresults">
+                <script>
+                    var graph = {{ranforgraph | safe}};
+                    var lineslayout = {
+                      title: document.getElementById('RanForchoice').name,
+                      plot_bgcolor:"#F5F5F5",
+                      paper_bgcolor:"#F5F5F5",
+                      margin: {
+                        l: 50,
+                        r: 25,
+                        pad: 15
+                        }
+                    };
+                    // Add all layout scripts to top
+                    Plotly.plot('RanForresults',graph,lineslayout);
+                </script>
+            </div>
+            <div class="container">
+                <div class="forcespace">
+                    <p></p>
+                </div>
+                {{ ranfortable|safe }}
+            </div>
+            <br>
+            <select class="form-control" id='ExTreechoice' name="Extra Trees">
+                <option value="Training">Training</option>
+                <option value="Testing">Testing</option>
+            </select>
+            <div class="mlgraph" id="ExTreeresults">
+                <script>
+                    var graph = {{extreegraph | safe}};
+                    var lineslayout = {
+                      title: document.getElementById('ExTreechoice').name,
+                      plot_bgcolor:"#F5F5F5",
+                      paper_bgcolor:"#F5F5F5",
+                      margin: {
+                        l: 50,
+                        r: 25,
+                        pad: 15
+                        }
+                    };
+                    // Add all layout scripts to top
+                    Plotly.plot('ExTreeresults',graph,lineslayout);
+                </script>
+            </div>
+            <div class="container">
+                <div class="forcespace">
+                    <p></p>
+                </div>
+                {{ extreetable|safe }}
             </div>
 		</div>
     </div>
@@ -244,17 +317,50 @@
             });
         })
         $('#LinRegchoice').on('change',function(){
-            lineslayout['title'] = "Linear Regression"
+            lineslayout['title'] = document.getElementById('LinRegchoice').name
             $.ajax({
-                url: "/linregchange",
+                url: "/splitchange",
                 type: "GET",
                 contentType: 'application/json;charset=UTF-8',
                 data: {
-                    'linregchoice': document.getElementById('LinRegchoice').value
+                    'splitchoice': document.getElementById('LinRegchoice').value,
+                    'algorithm': document.getElementById('LinRegchoice').name
                 },
                 dataType:"json",
                 success: function (data) {
                     Plotly.newPlot('LinRegresults', data, lineslayout);
+                }
+            });
+        })
+        $('#RanForchoice').on('change',function(){
+            lineslayout['title'] = document.getElementById('RanForchoice').name
+            $.ajax({
+                url: "/splitchange",
+                type: "GET",
+                contentType: 'application/json;charset=UTF-8',
+                data: {
+                    'splitchoice': document.getElementById('RanForchoice').value,
+                    'algorithm': document.getElementById('RanForchoice').name
+                },
+                dataType:"json",
+                success: function (data) {
+                    Plotly.newPlot('RanForresults', data, lineslayout);
+                }
+            });
+        })
+        $('#ExTreechoice').on('change',function(){
+            lineslayout['title'] = document.getElementById('ExTreechoice').name
+            $.ajax({
+                url: "/splitchange",
+                type: "GET",
+                contentType: 'application/json;charset=UTF-8',
+                data: {
+                    'splitchoice': document.getElementById('ExTreechoice').value,
+                    'algorithm': document.getElementById('ExTreechoice').name
+                },
+                dataType:"json",
+                success: function (data) {
+                    Plotly.newPlot('ExTreeresults', data, lineslayout);
                 }
             });
         })

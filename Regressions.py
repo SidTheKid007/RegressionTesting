@@ -6,6 +6,8 @@ import json
 from os import path
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
+from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
 import plotly
 import plotly.graph_objs as go
 
@@ -32,7 +34,7 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
-        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6])
+        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11])
     else:
         return render_template('error-page.html')
     # if futureflag == True:
@@ -67,7 +69,17 @@ def fullAnalysis(maindata):
     splitdata = splitTrainTest(cleandata, .8)
     linreg = linearRegression(splitdata)
     linreggraph = graphModelResults(linreg, 'Training')
-    results = [summary, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph]
+    linregresults = metricModelResults(linreg, cleandata)
+    linregtable = linregresults[1]
+    ranfor = randomForest(splitdata)
+    ranforgraph = graphModelResults(ranfor, 'Training')
+    ranforresults = metricModelResults(ranfor, cleandata)
+    ranfortable = ranforresults[1]
+    extree = extraTrees(splitdata)
+    extreegraph = graphModelResults(extree, 'Training')
+    extreeresults = metricModelResults(extree, cleandata)
+    extreetable = extreeresults[1]
+    results = [summary, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, ranforgraph, ranfortable, extreegraph, extreetable]
     return results
     # return array of all visuals needed
 
@@ -283,6 +295,7 @@ def rfeAlgo(cleandata):
 	ranks['Rank'] = rferanks
 	ranks = ranks.sort_values('Rank', ascending=True)
 	ranks = ranks.set_index('Rank')
+	# replace with ranks.index = ranks['Rank'].values?
 	ranks = ranks.head(20).to_html(classes='rferank')
 	# test bigger data and change 15 to max stretch
 	# add corr matrix results?
@@ -328,6 +341,36 @@ def linearRegression(splitdata):
 	return results
 
 
+def randomForest(splitdata):
+	trainindex = splitdata[0]
+	testindex = splitdata[1]
+	traininput = splitdata[2]
+	testinput = splitdata[3]
+	trainoutput = splitdata[4]
+	testoutput = splitdata[5]
+	model = RandomForestRegressor().fit(traininput, trainoutput)
+	predictedtrain = model.predict(traininput)
+	predictedtest = model.predict(testinput)
+	results = [trainindex, testindex, trainoutput, predictedtrain, testoutput, predictedtest]
+	session["RanForResults"] = results
+	return results
+
+
+def extraTrees(splitdata):
+	trainindex = splitdata[0]
+	testindex = splitdata[1]
+	traininput = splitdata[2]
+	testinput = splitdata[3]
+	trainoutput = splitdata[4]
+	testoutput = splitdata[5]
+	model = ExtraTreesRegressor().fit(traininput, trainoutput)
+	predictedtrain = model.predict(traininput)
+	predictedtest = model.predict(testinput)
+	results = [trainindex, testindex, trainoutput, predictedtrain, testoutput, predictedtest]
+	session["ExTreeResults"] = results
+	return results
+
+
 def graphModelResults(results, split):
 	trainindex = results[0]
 	testindex = results[1]
@@ -345,18 +388,53 @@ def graphModelResults(results, split):
 		return graphJSON
 
 
-@app.route('/linregchange', methods=['GET', 'POST'])
-def changelinreg():
-    split = request.args['linregchoice']
-    results = session["LinRegResults"]
+@app.route('/splitchange', methods=['GET', 'POST'])
+def changesplit():
+    split = request.args['splitchoice']
+    model = request.args['algorithm']
+    if model == 'Linear Regression':
+    	results = session["LinRegResults"]
+    elif model == 'Random Forrest':
+    	results = session["RanForResults"]
+    elif model == 'Extra Trees':
+    	results = session["ExTreeResults"]
     graphJSON = graphModelResults(results, split)
     return graphJSON
 
 
-def tableModelResults(results):
-	return ''
+def adj_r2_score(r2, n, k):
+	return 1-((1-r2)*((n-1)/(n-k-1)))
+
+
+def metricModelResults(results, cleandata):
+	# return result table and test array
+	tabewidth = len(cleandata.columns.values) - 1
+	trainoutput = results[2]
+	predictedtrain = results[3]
+	testoutput = results[4]
+	predictedtest = results[5]
+	trainsize = len(trainoutput)
+	testsize = len(testoutput)
+	trainr2 = round(r2_score(trainoutput, predictedtrain), 4)
+	testr2 = round(r2_score(testoutput, predictedtest), 4)
+	trainadjr2 = round(adj_r2_score(trainr2, trainsize, tabewidth), 4)
+	testadjr2 = round(adj_r2_score(testr2, testsize, tabewidth), 4)
+	trainrmse = round(mean_squared_error(trainoutput, predictedtrain), 4)
+	testrmse = round(mean_squared_error(testoutput, predictedtest), 4)
+	trainmae = round(mean_absolute_error(trainoutput, predictedtrain), 4)
+	testmae = round(mean_absolute_error(testoutput, predictedtest), 4)
+	trainvar = round(explained_variance_score(trainoutput, predictedtrain), 4)
+	testvar = round(explained_variance_score(testoutput, predictedtest), 4)
+	trainarray = [trainr2, trainadjr2, trainrmse, trainmae, trainvar]
+	testarray = [testr2, testadjr2, testrmse, testmae, testvar]
+	resultdf = pd.DataFrame([trainarray, testarray],columns=['r2', 'adj-r2', 'mse', 'mae', 'variance'])
+	resultdf.index = ['Train', 'Test']
+	resulttable = resultdf.to_html(classes='resulttable')
+	metrics = [testarray, resulttable]
+	return metrics
 
 
 if __name__ == '__main__':
+	# write comments for everything later
     app.debug = True
     app.run()
