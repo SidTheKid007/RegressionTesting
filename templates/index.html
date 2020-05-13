@@ -90,6 +90,16 @@
             float: left;
             width: 82%;
         }
+        .forcespace2 {
+            float: left;
+            padding-left: 4%;
+            padding-right: 0%;
+        }
+        .finaltable {
+            float: left;
+            width: 92%;
+            height: 260px;
+        }
 	</style> 
 </head>
 <body>
@@ -157,6 +167,7 @@
                     Plotly.plot('CleanHistogram',graph,barlayout);
                 </script>
             </div>
+            <br>
             <div class="container">
                 <div class="rightgraph" id="CorrelationMatrix">
                     <script>
@@ -298,6 +309,13 @@
                     <p></p>
                 </div>
                 {{ xgboosttable|safe }}
+            </div>
+            <h2> Summary </h2>
+            <div class="container">
+                <div class="forcespace2">
+                    <p></p>
+                </div>
+                {{ finalsummary|safe }}
             </div>
 		</div>
     </div>

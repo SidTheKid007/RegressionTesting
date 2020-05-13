@@ -35,7 +35,7 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
-        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13])
+        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
     else:
         return render_template('error-page.html')
     # if futureflag == True:
@@ -58,7 +58,7 @@ def validate(maindata):
 
 def fullAnalysis(maindata):
     fulldata = readfile(maindata)
-    summary = summarize(fulldata)
+    overview = makeOverview(fulldata)
     cleandata = cleanColumns(fulldata)
     # outdata = outliers(cleandata) - optional <remove outliers>
     howcleanedvars = revealClean()
@@ -84,7 +84,8 @@ def fullAnalysis(maindata):
     xgboostgraph = graphModelResults(xgboost, 'Training')
     xgboostresults = metricModelResults(xgboost, cleandata)
     xgboosttable = xgboostresults[1]
-    results = [summary, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, ranforgraph, ranfortable, extreegraph, extreetable, xgboostgraph, xgboosttable]
+    summary = fullSummary(linregresults[0], ranforresults[0], extreeresults[0], xgboostresults[0])
+    results = [overview, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, ranforgraph, ranfortable, extreegraph, extreetable, xgboostgraph, xgboosttable, summary]
     return results
     # return array of all visuals needed
 
@@ -99,7 +100,7 @@ def readfile(maindata):
 	return fulldata
 
 
-def summarize(fulldata):
+def makeOverview(fulldata):
     # Clean up and extract commons later
     # Add names for boxes
     summary =  fulldata.describe(include = 'all').T
@@ -383,7 +384,7 @@ def xgBoost(splitdata):
 	testinput = splitdata[3]
 	trainoutput = splitdata[4]
 	testoutput = splitdata[5]
-	model = XGBRegressor().fit(traininput, trainoutput)
+	model = XGBRegressor(objective='reg:squarederror').fit(traininput, trainoutput)
 	predictedtrain = model.predict(traininput)
 	predictedtest = model.predict(testinput)
 	results = [trainindex, testindex, trainoutput, predictedtrain, testoutput, predictedtest]
@@ -443,19 +444,26 @@ def metricModelResults(results, cleandata):
 	testr2 = round(r2_score(testoutput, predictedtest), 4)
 	trainadjr2 = round(adj_r2_score(trainr2, trainsize, tabewidth), 4)
 	testadjr2 = round(adj_r2_score(testr2, testsize, tabewidth), 4)
-	trainrmse = round(mean_squared_error(trainoutput, predictedtrain), 4)
-	testrmse = round(mean_squared_error(testoutput, predictedtest), 4)
+	trainrmse = round(np.sqrt(mean_squared_error(trainoutput, predictedtrain)), 4)
+	testrmse = round(np.sqrt(mean_squared_error(testoutput, predictedtest)), 4)
 	trainmae = round(mean_absolute_error(trainoutput, predictedtrain), 4)
 	testmae = round(mean_absolute_error(testoutput, predictedtest), 4)
 	trainvar = round(explained_variance_score(trainoutput, predictedtrain), 4)
 	testvar = round(explained_variance_score(testoutput, predictedtest), 4)
 	trainarray = [trainr2, trainadjr2, trainrmse, trainmae, trainvar]
 	testarray = [testr2, testadjr2, testrmse, testmae, testvar]
-	resultdf = pd.DataFrame([trainarray, testarray],columns=['r2', 'adj-r2', 'mse', 'mae', 'variance'])
+	resultdf = pd.DataFrame([trainarray, testarray],columns=['r2', 'adj-r2', 'rmse', 'mae', 'variance'])
 	resultdf.index = ['Train', 'Test']
 	resulttable = resultdf.to_html(classes='resulttable')
 	metrics = [testarray, resulttable]
 	return metrics
+
+
+def fullSummary(linregresults, ranforresults, extreeresults, xgboostresults):
+	summarydf = pd.DataFrame([linregresults, ranforresults, extreeresults, xgboostresults],columns=['r2', 'adj-r2', 'rmse', 'mae', 'variance'])
+	summarydf.index = ['Linear Regression', 'Random Forrest', 'Extra Trees', 'XGBoost']
+	summary = summarydf.to_html(classes='finaltable')
+	return summary
 
 
 if __name__ == '__main__':
