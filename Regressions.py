@@ -36,8 +36,10 @@ def my_form_post():
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
         if futureflag == True:
+        	futflag = futureCheck(maindata, future)
         	bestalgo = results[15]
-        	fullPredict(future, bestalgo)
+        	if futflag == True:
+        		fullPredict(future, bestalgo)
         return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
     else:
         return render_template('error-page.html')
@@ -57,6 +59,20 @@ def validate(maindata):
         except Exception:
             checkflag = False
     return checkflag
+
+
+def futureCheck(maindata, future):
+	# do more diligence here (ex. same data types instead of names then rename. check order, etc)
+	checkflag = False
+	main = pd.read_csv(maindata)
+	fut = pd.read_csv(future) 
+	maincols = main.columns.values
+	futcols = fut.columns.values
+	if (np.array_equal((maincols[:-1]),futcols)):
+		checkflag = True
+	else:
+		checkflag = False
+	return checkflag
 
 
 def fullAnalysis(maindata):
@@ -184,10 +200,12 @@ def cleanColumns(fulldata):
 	targetdata = cleandata[targetvar].values
 	cleandata = cleandata.drop([targetvar], axis=1)
 	nacols = cleandata.isna().sum().values
+	session["nullvar"] = []
 	for k in range(len(nacols)):
-		if (nacols[k]/len(cleandata) > .5):
+		if (nacols[k]/len(cleandata) > .3):
 			dropvar = varnames[k]
 			cleandata = cleandata.drop([dropvar], axis=1)
+			session["nullvar"].append(dropvar)
 			# add this to session
 	session["datetimes"] = []
 	session["smallDisc"] = []
@@ -276,7 +294,9 @@ def revealClean():
 	for k in session["medDisc"]:
 		cleanedvars.append(str(k[0]) + ' was converted into a mapping of numbers.')
 	for k in session["bigDisc"]:
-		cleanedvars.append(str(k) + ' was dropped.')
+		cleanedvars.append(str(k) + ' was dropped for being uninformative.')
+	for k in session["nullvar"]:
+		cleanedvars.append(str(k) + ' was dropped for having too many nulls.')
 	return cleanedvars
 
 
@@ -301,6 +321,9 @@ def cleanFuture(futuredata):
 		cleandata[k] = cleandata[k].replace(valdict)
 	for k in session["bigDisc"]:
 		cleandata = cleandata.drop([k], axis=1)
+	for k in session["nullvar"]:
+		cleandata = cleandata.drop([k], axis=1)
+	cleandata = cleandata.dropna()
 	cleandata = cleandata.sort_index(axis = 1) 
 	return cleandata
 
