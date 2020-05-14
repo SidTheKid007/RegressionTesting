@@ -35,6 +35,9 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
+        if futureflag == True:
+        	bestalgo = results[15]
+        	fullPredict(future, bestalgo)
         return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
     else:
         return render_template('error-page.html')
@@ -57,7 +60,7 @@ def validate(maindata):
 
 
 def fullAnalysis(maindata):
-    fulldata = readfile(maindata)
+    fulldata = readFile(maindata)
     overview = makeOverview(fulldata)
     cleandata = cleanColumns(fulldata)
     # outdata = outliers(cleandata) - optional <remove outliers>
@@ -84,13 +87,23 @@ def fullAnalysis(maindata):
     xgboostgraph = graphModelResults(xgboost, 'Training')
     xgboostresults = metricModelResults(xgboost, cleandata)
     xgboosttable = xgboostresults[1]
-    summary = fullSummary(linregresults[0], ranforresults[0], extreeresults[0], xgboostresults[0])
-    results = [overview, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, ranforgraph, ranfortable, extreegraph, extreetable, xgboostgraph, xgboosttable, summary]
+    fullsum = fullSummary(linregresults[0], ranforresults[0], extreeresults[0], xgboostresults[0])
+    summary = fullsum[0]
+    bestalgo = fullsum[1]
+    results = [overview, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, ranforgraph, ranfortable, extreegraph, extreetable, xgboostgraph, xgboosttable, summary, bestalgo]
     return results
     # return array of all visuals needed
 
 
-def readfile(maindata):
+def fullPredict(future, bestalgo):
+	futdata = readFile(future)
+	# do further checks of validity of dataset here
+	cleandata = cleanFuture(futdata)
+	predictions = predictData(cleandata, bestalgo)
+	saveData(future, predictions, bestalgo)
+
+
+def readFile(maindata):
 	# clean string for common errors
 	fulldata = pd.read_csv(maindata)
 	# check file type and read diff types
@@ -106,15 +119,15 @@ def makeOverview(fulldata):
     summary =  fulldata.describe(include = 'all').T
     sumlabels = summary.columns.values
     if ('unique' in sumlabels) & ('mean' in sumlabels):
-        summaries = mixsummarize(fulldata)
+        summaries = mixSummarize(fulldata)
     elif ('unique' in sumlabels):
-        summaries = discsummarize(fulldata)
+        summaries = discSummarize(fulldata)
     else:
-        summaries = contsummarize(fulldata)
+        summaries = contSummarize(fulldata)
     return summaries
 
 
-def contsummarize(fulldata):
+def contSummarize(fulldata):
     summary =  fulldata.describe(include = 'all').T
     summary['nulls'] = fulldata.isna().sum().values
     dtypes = []
@@ -127,7 +140,7 @@ def contsummarize(fulldata):
     return summaries
 
 
-def discsummarize(fulldata):
+def discSummarize(fulldata):
     summary =  fulldata.describe(include = 'all').T
     summary = summary.drop(['top','freq'], axis=1)
     summary['nulls'] = fulldata.isna().sum().values
@@ -141,7 +154,7 @@ def discsummarize(fulldata):
     return summaries
 
 
-def mixsummarize(fulldata):
+def mixSummarize(fulldata):
     summary =  fulldata.describe(include = 'all').T
     summary = summary.drop(['top','freq'], axis=1)
     summary['nulls'] = fulldata.isna().sum().values
@@ -172,9 +185,10 @@ def cleanColumns(fulldata):
 	cleandata = cleandata.drop([targetvar], axis=1)
 	nacols = cleandata.isna().sum().values
 	for k in range(len(nacols)):
-		if (nacols[k]/len(cleandata) > .1):
+		if (nacols[k]/len(cleandata) > .5):
 			dropvar = varnames[k]
 			cleandata = cleandata.drop([dropvar], axis=1)
+			# add this to session
 	session["datetimes"] = []
 	session["smallDisc"] = []
 	session["medDisc"] = []
@@ -202,7 +216,8 @@ def discClean(cleandata, varname):
 	except Exception:
 		# instead of size, change it to nominal vs ordinal
 	    univals = len(cleandata[varname].unique())
-	    if (univals < 2) | (univals/len(cleandata)>.1):
+	    # change .2 once meddisc is updated
+	    if (univals < 2) | (univals/len(cleandata)>.2):
 	    	cleandata = bigDisc(cleandata, varname)
 	    elif (univals < 21):
 	    	cleandata = smallDisc(cleandata, varname)
@@ -265,6 +280,31 @@ def revealClean():
 	return cleanedvars
 
 
+def cleanFuture(futuredata):
+	cleandata = futuredata.copy()
+	# replace with method calls
+	for k in session["datetimes"]:
+		cleandata[k] =  pd.to_datetime(cleandata[k], errors='coerce')
+		cleandata[k + '_year'] = cleandata[k].dt.year
+		cleandata[k + '_month'] = cleandata[k].dt.month
+		cleandata[k + '_day'] = cleandata[k].dt.day
+		cleandata = cleandata.drop([k], axis=1)
+	for k in session["smallDisc"]:
+		for dum in k[1]:
+			newvar = k[0] + '_' + str(dum)
+			cleandata[newvar] = 0
+			cleandata[newvar] = np.where((cleandata[k[0]] == dum), 1, 0)
+		cleandata = cleandata.drop([k[0]], axis=1)
+	for k in session["medDisc"]:
+		univals = k[1]
+		arbindex = (range(len(univals)))
+		cleandata[k] = cleandata[k].replace(valdict)
+	for k in session["bigDisc"]:
+		cleandata = cleandata.drop([k], axis=1)
+	cleandata = cleandata.sort_index(axis = 1) 
+	return cleandata
+
+
 def makeDists(cleandata, varname):
 	vardata = cleandata[varname].values
 	data = [go.Histogram(x=vardata)]
@@ -273,7 +313,7 @@ def makeDists(cleandata, varname):
 
 
 @app.route('/fullhistchange', methods=['GET', 'POST'])
-def fullchangedist():
+def fullChangeDist():
     varname = request.args['histchoice']
     cleandata = session["fulldata"]
     graphJSON = makeDists(cleandata, varname)
@@ -281,7 +321,7 @@ def fullchangedist():
 
 
 @app.route('/cleanhistchange', methods=['GET', 'POST'])
-def cleanchangedist():
+def cleanChangeDist():
     varname = request.args['histchoice']
     cleandata = session["cleandata"]
     graphJSON = makeDists(cleandata, varname)
@@ -311,7 +351,7 @@ def rfeAlgo(cleandata):
 def corrMatrix(cleandata):
 	heatmap = cleandata.corr().iloc[::-1].values
 	labels = cleandata.columns.values
-	data = [go.Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True, showscale=False)]
+	data = [go.Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True, showscale=True)]
 	# use bluescale and absolute value here?
 	# drop above diagonal?
 	graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
@@ -354,7 +394,7 @@ def randomForest(splitdata):
 	testinput = splitdata[3]
 	trainoutput = splitdata[4]
 	testoutput = splitdata[5]
-	model = RandomForestRegressor().fit(traininput, trainoutput)
+	model = RandomForestRegressor(n_estimators=100).fit(traininput, trainoutput)
 	predictedtrain = model.predict(traininput)
 	predictedtest = model.predict(testinput)
 	results = [trainindex, testindex, trainoutput, predictedtrain, testoutput, predictedtest]
@@ -369,7 +409,7 @@ def extraTrees(splitdata):
 	testinput = splitdata[3]
 	trainoutput = splitdata[4]
 	testoutput = splitdata[5]
-	model = ExtraTreesRegressor().fit(traininput, trainoutput)
+	model = ExtraTreesRegressor(n_estimators=100).fit(traininput, trainoutput)
 	predictedtrain = model.predict(traininput)
 	predictedtest = model.predict(testinput)
 	results = [trainindex, testindex, trainoutput, predictedtrain, testoutput, predictedtest]
@@ -461,9 +501,45 @@ def metricModelResults(results, cleandata):
 
 def fullSummary(linregresults, ranforresults, extreeresults, xgboostresults):
 	summarydf = pd.DataFrame([linregresults, ranforresults, extreeresults, xgboostresults],columns=['r2', 'adj-r2', 'rmse', 'mae', 'variance'])
-	summarydf.index = ['Linear Regression', 'Random Forrest', 'Extra Trees', 'XGBoost']
+	algos = ['Linear Regression', 'Random Forrest', 'Extra Trees', 'XGBoost']
+	summarydf.index = algos
 	summary = summarydf.to_html(classes='finaltable')
-	return summary
+	bestalgo = algos[np.where(summarydf['r2'].values == np.amax(summarydf['r2'].values))[0][0]]
+	results = [summary, bestalgo]
+	return results
+
+
+def predictData(cleandata, bestalgo):
+	testinput = cleandata.values
+	traindata = session["cleandata"]
+	targetvar = traindata.columns.values[-1]
+	trainoutput = traindata[targetvar].values
+	traininput = traindata.drop([targetvar], axis=1).values
+	if bestalgo == 'Linear Regression':
+		model = LinearRegression().fit(traininput, trainoutput)
+		results = model.predict(testinput)
+	elif bestalgo == 'Random Forrest':
+		model = RandomForestRegressor(n_estimators=100).fit(traininput, trainoutput)
+		results = model.predict(testinput)
+	elif bestalgo == 'Extra Trees':
+		model = ExtraTreesRegressor(n_estimators=100).fit(traininput, trainoutput)
+		results = model.predict(testinput)
+	elif bestalgo == 'XGBoost':
+		model = XGBRegressor(objective='reg:squarederror').fit(traininput, trainoutput)
+		results = model.predict(testinput)
+	else:
+		model = LinearRegression().fit(traininput, trainoutput)
+		results = model.predict(testinput)
+	cleandata[targetvar] = results
+	predictions = cleandata
+	return predictions
+
+
+def saveData(future, predictions, bestalgo):
+	filepath = future[:-4]
+	filepath = filepath + '_' + bestalgo + '_results.csv'
+	predictions.to_csv(filepath) 
+	return ''
 
 
 if __name__ == '__main__':
