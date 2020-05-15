@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, session
 from flask_session import Session
-from flask_uploads import UploadSet, configure_uploads, DATA
+from flask_uploads import UploadSet, configure_uploads, ALL
 import numpy as np
 import pandas as pd
 import json
@@ -20,7 +20,7 @@ app.config.from_object(__name__)
 Session(app)
 
 
-csvdatafiles = UploadSet('data', DATA)
+csvdatafiles = UploadSet('data', ALL)
 app.config['UPLOADED_DATA_DEST'] = 'static/data'
 configure_uploads(app, csvdatafiles)
 
@@ -32,33 +32,31 @@ def index():
 
 @app.route('/', methods=['POST'])
 def my_form_post():
-    # maindata = csvdatafiles.save(request.files['maindata'])
-    # future = csvdatafiles.save(request.files['future'])
     # fixflask_uploads.UploadNotAllowed error
-    # make this a method call
+    # clear data folder too every so often
+    session.clear()
     try:
     	maindata = 'static/data/' + csvdatafiles.save(request.files['maindata'])
     except Exception:
-    	maindata = 'static/data/' + request.form['maindata']
-    try:
-    	future = 'static/data/' + csvdatafiles.save(request.files['future'])
-    except Exception:
-    	if request.form.get('future') is None:
-    		future = 'static/data/' + ''
-    	else:
-    		future = 'static/data/' + request.form.get('future')
-    session.clear()
+    	maindata = 'static/data/' + str(request.form['maindata'])
+    #try:
+    #	future = 'static/data/' + csvdatafiles.save(request.files['future'])
+    #except Exception:
+    #	if request.form.get('future') is None:
+    #		future = 'static/data/' + ''
+    #	else:
+    #		future = 'static/data/' + request.form.get('future')
     checkflag = validate(maindata)
-    futureflag = validate(future)
+    #futureflag = validate(future)
     if checkflag == True:
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
-        if futureflag == True:
-        	futflag = futureCheck(maindata, future)
-        	bestalgo = results[15]
-        	if futflag == True:
-        		fullPredict(future, bestalgo)
+        #if futureflag == True:
+        	#futflag = futureCheck(maindata, future)
+        	#bestalgo = results[15]
+        	#if futflag == True:
+        		#fullPredict(future, bestalgo)
         		# instead of this 
         return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
     else:
@@ -70,8 +68,12 @@ def validate(maindata):
     validpath = path.exists(maindata)
     if validpath:
         try:
-            df1 = pd.read_csv(maindata) 
-            checkflag = True
+            df1 = pd.read_csv(maindata)
+            targetvar = df1.columns.values[-1]
+            if (df1[targetvar].dtype == np.float64 or df1[targetvar].dtype == np.int64):
+            	checkflag = True
+            else:
+            	checkflag = False
         except Exception:
             checkflag = False
     return checkflag
@@ -230,7 +232,7 @@ def cleanColumns(fulldata):
 	for varname in cleandata.columns.values:
 	    if(cleandata[varname].dtype != np.float64 and cleandata[varname].dtype != np.int64):
 	    	try:
-	    		cleandata[varname] =  pd.to_numeric(cleandata[varname])
+	    		cleandata[varname] = pd.to_numeric(cleandata[varname])
 	    	except Exception:
 	    		cleandata = discClean(cleandata, varname)
 	# check for numbers (convert all to numeric at end to be safe)?

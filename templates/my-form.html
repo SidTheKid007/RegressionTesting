@@ -20,10 +20,7 @@
             color:black; 
         }
         .lineitem {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            width: 72%; 
+            position: relative;
         }
 	</style> 
 </head>
@@ -33,17 +30,15 @@
         <div class="col-md-6">
         	<h1> Regression Testing </h1>
             <form enctype=multipart/form-data method="POST">
-                <h3>Enter your CSV files</h3>
+                <h3>Select the file that you want analyzed</h3>
                 <div class="lineitem">
-                    <label>Path to training data: </label>
-                    <input name="maindata" type="file" required>
+                    <input name="maindata" type="file" size="600" required>
                 </div>
-                <br>
+                <!--<br>
                 <div class="lineitem">
                     <label>Path to prediction data: </label>
                     <input name="future" type="file">
-                </div>
-                <br>
+                </div>-->
                 <br>
                 <input type="submit">
             </form>
