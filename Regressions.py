@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, session
 from flask_session import Session
+from flask_uploads import UploadSet, configure_uploads, DATA
 import numpy as np
 import pandas as pd
 import json
@@ -19,6 +20,11 @@ app.config.from_object(__name__)
 Session(app)
 
 
+csvdatafiles = UploadSet('data', DATA)
+app.config['UPLOADED_DATA_DEST'] = 'static/data'
+configure_uploads(app, csvdatafiles)
+
+
 @app.route('/')
 def index():
     return render_template('my-form.html')
@@ -26,8 +32,21 @@ def index():
 
 @app.route('/', methods=['POST'])
 def my_form_post():
-    maindata = request.form['maindata']
-    future = request.form['future']
+    # maindata = csvdatafiles.save(request.files['maindata'])
+    # future = csvdatafiles.save(request.files['future'])
+    # fixflask_uploads.UploadNotAllowed error
+    # make this a method call
+    try:
+    	maindata = 'static/data/' + csvdatafiles.save(request.files['maindata'])
+    except Exception:
+    	maindata = 'static/data/' + request.form['maindata']
+    try:
+    	future = 'static/data/' + csvdatafiles.save(request.files['future'])
+    except Exception:
+    	if request.form.get('future') is None:
+    		future = 'static/data/' + ''
+    	else:
+    		future = 'static/data/' + request.form.get('future')
     session.clear()
     checkflag = validate(maindata)
     futureflag = validate(future)
@@ -40,13 +59,10 @@ def my_form_post():
         	bestalgo = results[15]
         	if futflag == True:
         		fullPredict(future, bestalgo)
+        		# instead of this 
         return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
     else:
         return render_template('error-page.html')
-    # if futureflag == True:
-    #    pred = predict(futureflag)
-    #    in predict check if columns are named the same as in train
-    #    error handling to make sure data names and internals are same
 
 
 def validate(maindata):
