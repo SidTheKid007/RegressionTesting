@@ -4,7 +4,7 @@ from flask_uploads import UploadSet, configure_uploads, ALL
 import numpy as np
 import pandas as pd
 import json
-from os import path
+from os import path, remove
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
@@ -52,6 +52,8 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["cleandata"].columns.values
+        if path.exists(maindata):
+        	remove(maindata)
         #if futureflag == True:
         	#futflag = futureCheck(maindata, future)
         	#bestalgo = results[15]
@@ -60,7 +62,10 @@ def my_form_post():
         		# instead of this 
         return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], ranforgraph=results[8], ranfortable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
     else:
-        return render_template('error-page.html')
+    	if path.exists(maindata):
+        	remove(maindata)
+        	return render_template('error-page.html')
+
 
 
 def validate(maindata):
