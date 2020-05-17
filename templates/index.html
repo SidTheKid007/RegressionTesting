@@ -154,7 +154,7 @@
                     var barlayout = {
                       bargap: 0.05, 
                       bargroupgap: 0.2, 
-                      title: "Clean Distribution", 
+                      title: "Cleaned and Normalized Distribution", 
                       xaxis: {title: "Value"},
                       plot_bgcolor:"#F5F5F5",
                       paper_bgcolor:"#F5F5F5",
@@ -348,7 +348,7 @@
             });
         })
         $('#cleanHistchoice').on('change',function(){
-            barlayout['title'] = "Clean Distribution";
+            barlayout['title'] = "Cleaned and Normalized Distribution";
             $.ajax({
                 url: "/cleanhistchange",
                 type: "GET",

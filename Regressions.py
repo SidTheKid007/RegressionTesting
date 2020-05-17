@@ -58,7 +58,7 @@ def my_form_post():
             maindata = maindata[:-5] + '.csv'
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
-        cleanvars = session["cleandata"].columns.values
+        cleanvars = session["normdata"].columns.values
         if path.exists(maindata):
             remove(maindata)
         #if futureflag == True:
@@ -134,28 +134,29 @@ def fullAnalysis(maindata):
     overview = makeOverview(fulldata)
     cleandata = cleanColumns(fulldata)
     # outdata = outliers(cleandata) - optional <remove outliers>
+    normdata = normalize(cleandata)
     howcleanedvars = revealClean()
     rawdistplot = makeDists(fulldata, fulldata.columns.values[0])
-    cleandistplot = makeDists(cleandata, cleandata.columns.values[0])
-    # normdata = normalize(cleandata) - optional <normalization>
-    heatmap = corrMatrix(cleandata)
-    rfelist = rfeAlgo(cleandata)
-    splitdata = splitTrainTest(cleandata, .8)
+    cleandistplot = makeDists(normdata, normdata.columns.values[0])
+    heatmap = corrMatrix(normdata)
+    rfelist = rfeAlgo(normdata)
+    # rfe clean or norm data
+    splitdata = splitTrainTest(normdata, .8)
     linreg = linearRegression(splitdata)
     linreggraph = graphModelResults(linreg, 'Training')
-    linregresults = metricModelResults(linreg, cleandata)
+    linregresults = metricModelResults(linreg, normdata)
     linregtable = linregresults[1]
     ranfor = randomForest(splitdata)
     ranforgraph = graphModelResults(ranfor, 'Training')
-    ranforresults = metricModelResults(ranfor, cleandata)
+    ranforresults = metricModelResults(ranfor, normdata)
     ranfortable = ranforresults[1]
     extree = extraTrees(splitdata)
     extreegraph = graphModelResults(extree, 'Training')
-    extreeresults = metricModelResults(extree, cleandata)
+    extreeresults = metricModelResults(extree, normdata)
     extreetable = extreeresults[1]
     xgboost = xgBoost(splitdata)
     xgboostgraph = graphModelResults(xgboost, 'Training')
-    xgboostresults = metricModelResults(xgboost, cleandata)
+    xgboostresults = metricModelResults(xgboost, normdata)
     xgboosttable = xgboostresults[1]
     fullsum = fullSummary(linregresults[0], ranforresults[0], extreeresults[0], xgboostresults[0])
     summary = fullsum[0]
@@ -275,7 +276,6 @@ def cleanColumns(fulldata):
     cleandata = cleandata.sort_index(axis = 1) 
     cleandata[targetvar] = targetdata
     cleandata = cleandata.dropna()
-    session["cleandata"] = cleandata
     return cleandata
     # add clean colums with appending train and prod
 
@@ -382,6 +382,16 @@ def cleanFuture(futuredata):
     return cleandata
 
 
+def normalize(cleandata):
+    normdata = cleandata.copy()
+    allcols = list(normdata.columns)
+    allcols = allcols[:-1]
+    for col in allcols:
+        normdata[col] = (normdata[col] - normdata[col].mean())/normdata[col].std(ddof=0)
+    session["normdata"] = normdata
+    return normdata
+
+
 def makeDists(cleandata, varname):
     vardata = cleandata[varname].values
     data = [go.Histogram(x=vardata)]
@@ -400,7 +410,7 @@ def fullChangeDist():
 @app.route('/cleanhistchange', methods=['GET', 'POST'])
 def cleanChangeDist():
     varname = request.args['histchoice']
-    cleandata = session["cleandata"]
+    cleandata = session["normdata"]
     graphJSON = makeDists(cleandata, varname)
     return graphJSON
     # Split into files later ((html, css, js),(python, flask))
@@ -588,7 +598,7 @@ def fullSummary(linregresults, ranforresults, extreeresults, xgboostresults):
 
 def predictData(cleandata, bestalgo):
     testinput = cleandata.values
-    traindata = session["cleandata"]
+    traindata = session["normdata"]
     targetvar = traindata.columns.values[-1]
     trainoutput = traindata[targetvar].values
     traininput = traindata.drop([targetvar], axis=1).values
@@ -623,7 +633,7 @@ def saveData(future, predictions, bestalgo):
 def disconnect_user():
     flask.ext.login.logout_user()
     session.pop('fulldata', None)
-    session.pop('cleandata', None)
+    session.pop('normdata', None)
     session.pop('LinRegResults', None)
     session.pop('RanForResults', None)
     session.pop('ExTreeResults', None)
@@ -633,6 +643,7 @@ def disconnect_user():
     session.pop('medDisc', None)
     session.pop('bigDisc', None)
     session.pop('nullvar', None)
+    session.clear()
 
 
 if __name__ == '__main__':
