@@ -1,0 +1,16 @@
+,Descriptive Stats,Unnamed: 1,Unnamed: 2,Industry,Direct Deposit,Check,Cash,Prepaid Card,PayPal,Other,Unnamed: 10,Industry.1,GiG Platform,Customer,Mix
+0,,,,Labor,0.38,0.31,0.25,0.08,0.25,0.02,,Labor,0.46,0.14,0.3999999999999999
+1,Mean,2910.618395303328,,Delivery,0.6,0.18,0.18,0.03,0.35,0.02,,Delivery,0.32,0.2,0.48
+2,Standard Error,213.1482907034795,,Transportation,0.64,0.11,0.15,0.06,0.28,0.01,,Transportation,0.47,0.15,0.38
+3,Median,1100.0,,Professional,0.3,0.35,0.25,0.04,0.45,0.02,,Professional,0.43,0.26,0.31000000000000005
+4,Mode,1000.0,,Health,0.43,0.34,0.27,0.07,0.16,0.0,,Health,0.39,0.18,0.42999999999999994
+5,Standard Deviation,4818.282997815245,,Hospitality,0.43,0.3,0.2,0.07,0.35,0.0,,Hospitality,0.28,0.11,0.61
+6,Sample Variance,23215851.047035463,,,,,,,,,,,,,
+7,Kurtosis,20.046684271337515,,,,,,,,,,,,,
+8,Skewness,3.833703512947073,,,,,,,,,,,,,
+9,Range,44999.0,,,,,,,,,,,,,
+10,Minimum,1.0,,,,,,,,,,,,,
+11,Maximum,45000.0,,,,,,,,,,,,,
+12,Sum,1487326.0000000005,,,,,,,,,,,,,
+13,Count,511.0,,,,,,,,,,,,,
+14,Confidence Level(95.0%),418.7567521329236,,,,,,,,,,,,,
