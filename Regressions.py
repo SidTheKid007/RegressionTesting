@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, session
 from flask_session import Session
 from flask_uploads import UploadSet, configure_uploads, ALL
+from flask_socketio import SocketIO
 import numpy as np
 import pandas as pd
 import json
@@ -26,16 +27,18 @@ app.config['UPLOADED_DATA_DEST'] = 'static/data'
 configure_uploads(app, csvdatafiles)
 
 
+socketio = SocketIO(app)
+
+
 @app.route('/')
 def index():
+    session.clear()
     return render_template('my-form.html')
 
 
 @app.route('/', methods=['POST'])
 def my_form_post():
     # fixflask_uploads.UploadNotAllowed error
-    # clear data folder too every so often
-    session.clear()
     # clearSession()
     try:
         maindata = 'static/data/' + csvdatafiles.save(request.files['maindata'])
@@ -96,18 +99,18 @@ def validate(maindata):
                 # make diff error page for this?
         except Exception:
             checkflagcsv = False
-        try:
-            dfcheck = pd.read_excel(maindata)
-            filetype = 'excel'
-            targetvar = dfcheck.columns.values[-1]
-            if (dfcheck[targetvar].dtype == np.float64 or dfcheck[targetvar].dtype == np.int64):
-                if (len(dfcheck.columns.values) > 1):
-                    checkflagexcel = True
-                    dfcheck.to_csv(maindata[:-5] + '.csv', encoding='utf-8')
-                    remove(maindata)
-                    # delete file
-        except Exception:
-            checkflagexcel = False
+            try:
+                dfcheck = pd.read_excel(maindata)
+                filetype = 'excel'
+                targetvar = dfcheck.columns.values[-1]
+                if (dfcheck[targetvar].dtype == np.float64 or dfcheck[targetvar].dtype == np.int64):
+                    if (len(dfcheck.columns.values) > 1):
+                        checkflagexcel = True
+                        dfcheck.to_csv(maindata[:-5] + '.csv', encoding='utf-8')
+                        remove(maindata)
+                        # delete file
+            except Exception:
+                checkflagexcel = False
     checkflag = [(checkflagcsv or checkflagexcel), filetype]
     return checkflag
 
@@ -614,6 +617,22 @@ def saveData(future, predictions, bestalgo):
     filepath = filepath + '_' + bestalgo + '_results.csv'
     predictions.to_csv(filepath) 
     return ''
+
+
+@socketio.on('disconnect')
+def disconnect_user():
+    flask.ext.login.logout_user()
+    session.pop('fulldata', None)
+    session.pop('cleandata', None)
+    session.pop('LinRegResults', None)
+    session.pop('RanForResults', None)
+    session.pop('ExTreeResults', None)
+    session.pop('XGBoostResults', None)
+    session.pop('datetimes', None)
+    session.pop('smallDisc', None)
+    session.pop('medDisc', None)
+    session.pop('bigDisc', None)
+    session.pop('nullvar', None)
 
 
 if __name__ == '__main__':
