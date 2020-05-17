@@ -35,7 +35,8 @@ def index():
 def my_form_post():
     # fixflask_uploads.UploadNotAllowed error
     # clear data folder too every so often
-    clearSession()
+    session.clear()
+    # clearSession()
     try:
         maindata = 'static/data/' + csvdatafiles.save(request.files['maindata'])
     except Exception:
