@@ -100,15 +100,15 @@ def validate(maindata):
                 # make diff error page for this?
         except Exception:
             checkflagcsv = False
-            try:
-                dfcheck = pd.read_excel(maindata)
-                filetype = 'excel'
-                targetvar = dfcheck.columns.values[-1]
-                if (dfcheck[targetvar].dtype == np.float64 or dfcheck[targetvar].dtype == np.int64):
-                    if (len(dfcheck.columns.values) > 1):
-                        checkflagexcel = True
-                        dfcheck.to_csv(maindata[:-5] + '.csv', encoding='utf-8')
-                        remove(maindata)
+            #try:
+            #    dfcheck = pd.read_excel(maindata)
+            #    filetype = 'excel'
+            #    targetvar = dfcheck.columns.values[-1]
+            #    if (dfcheck[targetvar].dtype == np.float64 or dfcheck[targetvar].dtype == np.int64):
+            #        if (len(dfcheck.columns.values) > 1):
+            #            checkflagexcel = True
+            #            dfcheck.to_csv(maindata[:-5] + '.csv', encoding='utf-8')
+            #            remove(maindata)
                         # delete file
             except Exception:
                 checkflagexcel = False
