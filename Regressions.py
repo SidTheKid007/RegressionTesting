@@ -34,13 +34,13 @@ socketio = SocketIO(app)
 @app.route('/')
 def index():
     session.clear()
+    clearCache()
     return render_template('my-form.html')
 
 
 @app.route('/', methods=['POST'])
 def my_form_post():
     # fixflask_uploads.UploadNotAllowed error
-    # clearSession()
     try:
         maindata = 'static/data/' + csvdatafiles.save(request.files['maindata'])
     except Exception:
@@ -60,6 +60,7 @@ def my_form_post():
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["normdata"].columns.values
+        target = cleanvars[-1]
         if path.exists(maindata):
             remove(maindata)
         #if futureflag == True:
@@ -68,18 +69,20 @@ def my_form_post():
             #if futflag == True:
                 #fullPredict(future, bestalgo)
                 # instead of this 
-        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], knngraph=results[8], knntable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
+        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, target=target, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], knngraph=results[8], knntable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
     else:
         if path.exists(maindata):
             remove(maindata)
         return render_template('error-page.html')
 
 
-def clearSession():
-    session.clear()
-    files = glob('flask_session/*')
-    for f in files:
-        remove(f)
+def clearCache():
+    cachefiles = glob('__pycache__/*')
+    for c in cachefiles:
+        remove(c)
+    datafiles = glob('static/data/*')
+    for d in datafiles:
+        remove(d)
 
 
 def validate(maindata):
@@ -249,7 +252,7 @@ def mixSummarize(fulldata):
 def cleanColumns(fulldata):
     # Clean target var too
     session["fulldata"] = fulldata
-    cleandata = fulldata.dropna()
+    cleandata = fulldata.copy()
     cleandata = cleandata.sort_index(axis = 0) 
     varnames = cleandata.columns.values
     targetvar = varnames[-1]
@@ -430,7 +433,7 @@ def rfeAlgo(cleandata):
     ranks = ranks.sort_values('Rank', ascending=True)
     ranks = ranks.set_index('Rank')
     # replace with ranks.index = ranks['Rank'].values?
-    ranks = ranks.head(20).to_html(classes='rferank')
+    ranks = ranks.head(15).to_html(classes='rferank')
     # test bigger data and change 15 to max stretch
     # add corr matrix results?
     return ranks
