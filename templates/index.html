@@ -228,15 +228,15 @@
                 {{ linregtable|safe }}
             </div>
             <br>
-            <select class="form-control" id='SVRchoice' name="Support Vector Regression">
+            <select class="form-control" id='KNNchoice' name="K-Nearest Neighbors">
                 <option value="Training">Training</option>
                 <option value="Testing">Testing</option>
             </select>
-            <div class="mlgraph" id="SVRresults">
+            <div class="mlgraph" id="KNNresults">
                 <script>
-                    var graph = {{svrgraph | safe}};
+                    var graph = {{knngraph | safe}};
                     var lineslayout = {
-                      title: document.getElementById('SVRchoice').name,
+                      title: document.getElementById('KNNchoice').name,
                       plot_bgcolor:"#F5F5F5",
                       paper_bgcolor:"#F5F5F5",
                       margin: {
@@ -246,14 +246,14 @@
                         }
                     };
                     // Add all layout scripts to top
-                    Plotly.plot('SVRresults',graph,lineslayout);
+                    Plotly.plot('KNNresults',graph,lineslayout);
                 </script>
             </div>
             <div class="container">
                 <div class="forcespace">
                     <p></p>
                 </div>
-                {{ svrtable|safe }}
+                {{ knntable|safe }}
             </div>
             <br>
             <select class="form-control" id='ExTreechoice' name="Extra Trees">
@@ -379,19 +379,19 @@
                 }
             });
         })
-        $('#SVRchoice').on('change',function(){
-            lineslayout['title'] = document.getElementById('SVRchoice').name
+        $('#KNNchoice').on('change',function(){
+            lineslayout['title'] = document.getElementById('KNNchoice').name
             $.ajax({
                 url: "/splitchange",
                 type: "GET",
                 contentType: 'application/json;charset=UTF-8',
                 data: {
-                    'splitchoice': document.getElementById('SVRchoice').value,
-                    'algorithm': document.getElementById('SVRchoice').name
+                    'splitchoice': document.getElementById('KNNchoice').value,
+                    'algorithm': document.getElementById('KNNchoice').name
                 },
                 dataType:"json",
                 success: function (data) {
-                    Plotly.newPlot('SVRresults', data, lineslayout);
+                    Plotly.newPlot('KNNresults', data, lineslayout);
                 }
             });
         })

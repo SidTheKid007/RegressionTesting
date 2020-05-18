@@ -9,7 +9,7 @@ from os import path, remove
 from glob import glob
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LinearRegression
-from sklearn.svm import SVR
+from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import ExtraTreesRegressor
 from xgboost import XGBRegressor
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
@@ -68,7 +68,7 @@ def my_form_post():
             #if futflag == True:
                 #fullPredict(future, bestalgo)
                 # instead of this 
-        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], svrgraph=results[8], svrtable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
+        return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], knngraph=results[8], knntable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
     else:
         if path.exists(maindata):
             remove(maindata)
@@ -147,10 +147,10 @@ def fullAnalysis(maindata):
     linreggraph = graphModelResults(linreg, 'Training')
     linregresults = metricModelResults(linreg, normdata)
     linregtable = linregresults[1]
-    svr = supportVector(splitdata)
-    svrgraph = graphModelResults(svr, 'Training')
-    svrresults = metricModelResults(svr, normdata)
-    svrtable = svrresults[1]
+    knn = kNearest(splitdata)
+    knngraph = graphModelResults(knn, 'Training')
+    knnresults = metricModelResults(knn, normdata)
+    knntable = knnresults[1]
     extree = extraTrees(splitdata)
     extreegraph = graphModelResults(extree, 'Training')
     extreeresults = metricModelResults(extree, normdata)
@@ -159,10 +159,10 @@ def fullAnalysis(maindata):
     xgboostgraph = graphModelResults(xgboost, 'Training')
     xgboostresults = metricModelResults(xgboost, normdata)
     xgboosttable = xgboostresults[1]
-    fullsum = fullSummary(linregresults[0], svrresults[0], extreeresults[0], xgboostresults[0])
+    fullsum = fullSummary(linregresults[0], knnresults[0], extreeresults[0], xgboostresults[0])
     summary = fullsum[0]
     bestalgo = fullsum[1]
-    results = [overview, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, svrgraph, svrtable, extreegraph, extreetable, xgboostgraph, xgboosttable, summary, bestalgo]
+    results = [overview, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, knngraph, knntable, extreegraph, extreetable, xgboostgraph, xgboosttable, summary, bestalgo]
     return results
     # return array of all visuals needed
 
@@ -475,18 +475,18 @@ def linearRegression(splitdata):
     return results
 
 
-def supportVector(splitdata):
+def kNearest(splitdata):
     trainindex = splitdata[0]
     testindex = splitdata[1]
     traininput = splitdata[2]
     testinput = splitdata[3]
     trainoutput = splitdata[4]
     testoutput = splitdata[5]
-    model = SVR().fit(traininput, trainoutput)
+    model = KNeighborsRegressor().fit(traininput, trainoutput)
     predictedtrain = model.predict(traininput)
     predictedtest = model.predict(testinput)
     results = [trainindex, testindex, trainoutput, predictedtrain, testoutput, predictedtest]
-    session["SVRResults"] = results
+    session["KNNResults"] = results
     return results
 
 
@@ -543,8 +543,8 @@ def changesplit():
     model = request.args['algorithm']
     if model == 'Linear Regression':
         results = session["LinRegResults"]
-    elif model == 'Support Vector Regression':
-        results = session["SVRResults"]
+    elif model == 'K-Nearest Neighbors':
+        results = session["KNNResults"]
     elif model == 'Extra Trees':
         results = session["ExTreeResults"]
     elif model == 'XGBoost':
@@ -589,7 +589,7 @@ def metricModelResults(results, cleandata):
 
 def fullSummary(linregresults, ranforresults, extreeresults, xgboostresults):
     summarydf = pd.DataFrame([linregresults, ranforresults, extreeresults, xgboostresults],columns=['r2', 'adj-r2', 'rmse', 'mae', 'variance'])
-    algos = ['Linear Regression', 'Support Vector Regression', 'Extra Trees', 'XGBoost']
+    algos = ['Linear Regression', 'K-Nearest Neighbors', 'Extra Trees', 'XGBoost']
     summarydf.index = algos
     summary = summarydf.to_html(classes='finaltable')
     bestalgo = algos[np.where(summarydf['r2'].values == np.amax(summarydf['r2'].values))[0][0]]
@@ -606,8 +606,8 @@ def predictData(cleandata, bestalgo):
     if bestalgo == 'Linear Regression':
         model = LinearRegression().fit(traininput, trainoutput)
         results = model.predict(testinput)
-    elif bestalgo == 'SVR':
-        model = SVR().fit(traininput, trainoutput)
+    elif bestalgo == 'K-Nearest Neighbors':
+        model = KNeighborsRegressor().fit(traininput, trainoutput)
         results = model.predict(testinput)
     elif bestalgo == 'Extra Trees':
         model = ExtraTreesRegressor(n_estimators=100).fit(traininput, trainoutput)
@@ -636,7 +636,7 @@ def disconnect_user():
     session.pop('fulldata', None)
     session.pop('normdata', None)
     session.pop('LinRegResults', None)
-    session.pop('RanForResults', None)
+    session.pop('KNNResults', None)
     session.pop('ExTreeResults', None)
     session.pop('XGBoostResults', None)
     session.pop('datetimes', None)
