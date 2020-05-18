@@ -110,8 +110,8 @@ def validate(maindata):
             #            dfcheck.to_csv(maindata[:-5] + '.csv', encoding='utf-8')
             #            remove(maindata)
                         # delete file
-            except Exception:
-                checkflagexcel = False
+            #except Exception:
+            #    checkflagexcel = False
     checkflag = [(checkflagcsv or checkflagexcel), filetype]
     return checkflag
 
