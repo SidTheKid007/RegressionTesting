@@ -4,7 +4,7 @@ from flask_uploads import UploadSet, configure_uploads, ALL
 from flask_socketio import SocketIO
 import numpy as np
 import pandas as pd
-from json import dumps
+import json
 from os import path, remove
 from glob import glob
 from sklearn.feature_selection import RFE
@@ -13,8 +13,8 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import ExtraTreesRegressor
 from xgboost import XGBRegressor
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
-from plotly import utils
-from plotly.graph_objs import Histogram, Heatmap, Scatter
+import plotly
+import plotly.graph_objs as go
 
 
 app = Flask(__name__)
@@ -34,7 +34,6 @@ socketio = SocketIO(app)
 @app.route('/')
 def index():
     session.clear()
-    clearCache()
     return render_template('my-form.html')
 
 
@@ -401,8 +400,8 @@ def normalize(cleandata):
 
 def makeDists(cleandata, varname):
     vardata = cleandata[varname].values
-    data = [Histogram(x=vardata)]
-    graphJSON = dumps(data, cls=utils.PlotlyJSONEncoder)
+    data = [go.Histogram(x=vardata)]
+    graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
     return graphJSON
 
 
@@ -445,10 +444,10 @@ def rfeAlgo(cleandata):
 def corrMatrix(cleandata):
     heatmap = cleandata.corr().iloc[::-1].values
     labels = cleandata.columns.values
-    data = [Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True, showscale=True, zmax=1, zmin=-1)]
+    data = [go.Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True, showscale=True, zmax=1, zmin=-1)]
     # use bluescale and absolute value here?
     # drop above diagonal?
-    graphJSON = dumps(data, cls=utils.PlotlyJSONEncoder)
+    graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
     return graphJSON
 
 
@@ -534,12 +533,12 @@ def graphModelResults(results, split):
     testoutput = results[4]
     predictedtest = results[5]
     if split == 'Training':
-        data = [Scatter(x=trainindex, y=trainoutput, name='Ground Truth'), Scatter(x=trainindex, y=predictedtrain, name='Prediction')]
-        graphJSON = dumps(data, cls=utils.PlotlyJSONEncoder)
+        data = [go.Scatter(x=trainindex, y=trainoutput, name='Ground Truth'), go.Scatter(x=trainindex, y=predictedtrain, name='Prediction')]
+        graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
         return graphJSON
     else:
-        data = [Scatter(x=testindex, y=testoutput, name='Ground Truth'), Scatter(x=testindex, y=predictedtest, name='Prediction')]
-        graphJSON = dumps(data, cls=utils.PlotlyJSONEncoder)
+        data = [go.Scatter(x=testindex, y=testoutput, name='Ground Truth'), go.Scatter(x=testindex, y=predictedtest, name='Prediction')]
+        graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
         return graphJSON
 
 
@@ -639,17 +638,7 @@ def saveData(future, predictions, bestalgo):
 @socketio.on('disconnect')
 def disconnect_user():
     flask.ext.login.logout_user()
-    session.pop('fulldata', None)
-    session.pop('normdata', None)
-    session.pop('LinRegResults', None)
-    session.pop('KNNResults', None)
-    session.pop('ExTreeResults', None)
-    session.pop('XGBoostResults', None)
-    session.pop('datetimes', None)
-    session.pop('smallDisc', None)
-    session.pop('medDisc', None)
-    session.pop('bigDisc', None)
-    session.pop('nullvar', None)
+    clearCache()
     session.clear()
 
 
