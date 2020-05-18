@@ -228,15 +228,15 @@
                 {{ linregtable|safe }}
             </div>
             <br>
-            <select class="form-control" id='RanForchoice' name="Random Forrest">
+            <select class="form-control" id='SVRchoice' name="Support Vector Regression">
                 <option value="Training">Training</option>
                 <option value="Testing">Testing</option>
             </select>
-            <div class="mlgraph" id="RanForresults">
+            <div class="mlgraph" id="SVRresults">
                 <script>
-                    var graph = {{ranforgraph | safe}};
+                    var graph = {{svrgraph | safe}};
                     var lineslayout = {
-                      title: document.getElementById('RanForchoice').name,
+                      title: document.getElementById('SVRchoice').name,
                       plot_bgcolor:"#F5F5F5",
                       paper_bgcolor:"#F5F5F5",
                       margin: {
@@ -246,14 +246,14 @@
                         }
                     };
                     // Add all layout scripts to top
-                    Plotly.plot('RanForresults',graph,lineslayout);
+                    Plotly.plot('SVRresults',graph,lineslayout);
                 </script>
             </div>
             <div class="container">
                 <div class="forcespace">
                     <p></p>
                 </div>
-                {{ ranfortable|safe }}
+                {{ svrtable|safe }}
             </div>
             <br>
             <select class="form-control" id='ExTreechoice' name="Extra Trees">
@@ -379,19 +379,19 @@
                 }
             });
         })
-        $('#RanForchoice').on('change',function(){
-            lineslayout['title'] = document.getElementById('RanForchoice').name
+        $('#SVRchoice').on('change',function(){
+            lineslayout['title'] = document.getElementById('SVRchoice').name
             $.ajax({
                 url: "/splitchange",
                 type: "GET",
                 contentType: 'application/json;charset=UTF-8',
                 data: {
-                    'splitchoice': document.getElementById('RanForchoice').value,
-                    'algorithm': document.getElementById('RanForchoice').name
+                    'splitchoice': document.getElementById('SVRchoice').value,
+                    'algorithm': document.getElementById('SVRchoice').name
                 },
                 dataType:"json",
                 success: function (data) {
-                    Plotly.newPlot('RanForresults', data, lineslayout);
+                    Plotly.newPlot('SVRresults', data, lineslayout);
                 }
             });
         })
