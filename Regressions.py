@@ -4,7 +4,7 @@ from flask_uploads import UploadSet, configure_uploads, ALL
 from flask_socketio import SocketIO
 import numpy as np
 import pandas as pd
-import json
+from json import dumps
 from os import path, remove
 from glob import glob
 from sklearn.feature_selection import RFE
@@ -13,8 +13,8 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import ExtraTreesRegressor
 from xgboost import XGBRegressor
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
-import plotly
-import plotly.graph_objs as go
+from plotly import utils
+from plotly.graph_objs import Histogram, Heatmap, Scatter
 
 
 app = Flask(__name__)
@@ -137,6 +137,8 @@ def fullAnalysis(maindata):
     fulldata = readFile(maindata)
     overview = makeOverview(fulldata)
     cleandata = cleanColumns(fulldata)
+    # check if there are more than 2 cols
+    # make diff error pages with the same template and link them (tar var, not enough data)
     # outdata = outliers(cleandata) - optional <remove outliers>
     normdata = normalize(cleandata)
     howcleanedvars = revealClean()
@@ -265,7 +267,7 @@ def cleanColumns(fulldata):
             dropvar = varnames[k]
             cleandata = cleandata.drop([dropvar], axis=1)
             session["nullvar"].append(dropvar)
-            # add this to session
+            # do some fillna here? (if # of cols dropped here is too much)
     session["datetimes"] = []
     session["smallDisc"] = []
     session["medDisc"] = []
@@ -314,6 +316,7 @@ def datetimeDisc(cleandata, varname):
 
 def bigDisc(cleandata, varname):
     cleandata = cleandata.drop([varname], axis=1)
+    # do some fillna here? (if # of cols dropped here is too much)
     session["bigDisc"].append(varname)
     return cleandata
 
@@ -398,8 +401,8 @@ def normalize(cleandata):
 
 def makeDists(cleandata, varname):
     vardata = cleandata[varname].values
-    data = [go.Histogram(x=vardata)]
-    graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
+    data = [Histogram(x=vardata)]
+    graphJSON = dumps(data, cls=utils.PlotlyJSONEncoder)
     return graphJSON
 
 
@@ -442,10 +445,10 @@ def rfeAlgo(cleandata):
 def corrMatrix(cleandata):
     heatmap = cleandata.corr().iloc[::-1].values
     labels = cleandata.columns.values
-    data = [go.Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True, showscale=True, zmax=1, zmin=-1)]
+    data = [Heatmap(z=heatmap, x=labels, y=np.flip(labels), colorscale='RdBu', reversescale=True, showscale=True, zmax=1, zmin=-1)]
     # use bluescale and absolute value here?
     # drop above diagonal?
-    graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
+    graphJSON = dumps(data, cls=utils.PlotlyJSONEncoder)
     return graphJSON
 
 
@@ -531,12 +534,12 @@ def graphModelResults(results, split):
     testoutput = results[4]
     predictedtest = results[5]
     if split == 'Training':
-        data = [go.Scatter(x=trainindex, y=trainoutput, name='Ground Truth'), go.Scatter(x=trainindex, y=predictedtrain, name='Prediction')]
-        graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
+        data = [Scatter(x=trainindex, y=trainoutput, name='Ground Truth'), Scatter(x=trainindex, y=predictedtrain, name='Prediction')]
+        graphJSON = dumps(data, cls=utils.PlotlyJSONEncoder)
         return graphJSON
     else:
-        data = [go.Scatter(x=testindex, y=testoutput, name='Ground Truth'), go.Scatter(x=testindex, y=predictedtest, name='Prediction')]
-        graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
+        data = [Scatter(x=testindex, y=testoutput, name='Ground Truth'), Scatter(x=testindex, y=predictedtest, name='Prediction')]
+        graphJSON = dumps(data, cls=utils.PlotlyJSONEncoder)
         return graphJSON
 
 
