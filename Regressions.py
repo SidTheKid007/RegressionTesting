@@ -294,7 +294,7 @@ def discClean(cleandata, varname):
         # instead of size, change it to nominal vs ordinal
         univals = len(cleandata[varname].unique())
         # change .2 once meddisc is updated
-        if (univals < 2) | (univals/len(cleandata)>.2):
+        if (univals < 2) or (univals/len(cleandata)>.2):
             cleandata = bigDisc(cleandata, varname)
         elif (univals < 21):
             cleandata = smallDisc(cleandata, varname)
@@ -394,6 +394,7 @@ def normalize(cleandata):
     allcols = allcols[:-1]
     for col in allcols:
         normdata[col] = (normdata[col] - normdata[col].mean())/normdata[col].std(ddof=0)
+    normdata = normdata.dropna(axis='columns')
     session["normdata"] = normdata
     return normdata
 
