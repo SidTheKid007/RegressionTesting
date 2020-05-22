@@ -54,8 +54,6 @@ def my_form_post():
     checkflag = validate(maindata)
     #futureflag = validate(future)
     if checkflag[0] == True:
-        if checkflag[1] == 'excel':
-            maindata = maindata[:-5] + '.csv'
         results = fullAnalysis(maindata)
         allvars = session["fulldata"].columns.values
         cleanvars = session["normdata"].columns.values
@@ -76,9 +74,9 @@ def my_form_post():
 
 
 def clearCache():
-    cachefiles = glob('__pycache__/*')
-    for c in cachefiles:
-        remove(c)
+    #cachefiles = glob('__pycache__/*')
+    #for c in cachefiles:
+    #    remove(c)
     datafiles = glob('static/data/*')
     for d in datafiles:
         remove(d)
@@ -87,34 +85,30 @@ def clearCache():
 def validate(maindata):
     # change to methods to accomadate diff inputs
     checkflagcsv = False
-    checkflagexcel = False
     filetype = ''
-    validpath = path.exists(maindata)
-    if validpath:
-        try:
-            dfcheck = pd.read_csv(maindata)
-            filetype = 'csv'
-            targetvar = dfcheck.columns.values[-1]
-            if (dfcheck[targetvar].dtype == np.float64 or dfcheck[targetvar].dtype == np.int64):
-                if (len(dfcheck.columns.values) > 1):
-                    # try numeric conversion?
-                    checkflagcsv = True
-                # make diff error page for this?
-        except Exception:
-            checkflagcsv = False
-            #try:
-            #    dfcheck = pd.read_excel(maindata)
-            #    filetype = 'excel'
-            #    targetvar = dfcheck.columns.values[-1]
-            #    if (dfcheck[targetvar].dtype == np.float64 or dfcheck[targetvar].dtype == np.int64):
-            #        if (len(dfcheck.columns.values) > 1):
-            #            checkflagexcel = True
-            #            dfcheck.to_csv(maindata[:-5] + '.csv', encoding='utf-8')
-            #            remove(maindata)
-                        # delete file
-            #except Exception:
-            #    checkflagexcel = False
-    checkflag = [(checkflagcsv or checkflagexcel), filetype]
+    try:
+        dfcheck = pd.read_csv(maindata)
+        filetype = 'csv'
+        targetvar = dfcheck.columns.values[-1]
+        if (len(dfcheck.columns.values) > 1):
+            # try numeric conversion?
+            checkflagcsv = True
+            # make diff error page for this?
+    except Exception:
+        checkflagcsv = False
+        #try:
+        #    dfcheck = pd.read_excel(maindata)
+        #    filetype = 'excel'
+        #    targetvar = dfcheck.columns.values[-1]
+        #    if (dfcheck[targetvar].dtype == np.float64 or dfcheck[targetvar].dtype == np.int64):
+        #        if (len(dfcheck.columns.values) > 1):
+        #            checkflagexcel = True
+        #            dfcheck.to_csv(maindata[:-5] + '.csv', encoding='utf-8')
+        #            remove(maindata)
+                    # delete file
+        #except Exception:
+        #    checkflagexcel = False
+    checkflag = [checkflagcsv, filetype]
     return checkflag
 
 
@@ -136,7 +130,6 @@ def fullAnalysis(maindata):
     fulldata = readFile(maindata)
     overview = makeOverview(fulldata)
     cleandata = cleanColumns(fulldata)
-    # check if there are more than 2 cols
     # make diff error pages with the same template and link them (tar var, not enough data)
     # outdata = outliers(cleandata) - optional <remove outliers>
     normdata = normalize(cleandata)
@@ -145,7 +138,7 @@ def fullAnalysis(maindata):
     cleandistplot = makeDists(normdata, normdata.columns.values[0])
     heatmap = corrMatrix(normdata)
     rfelist = rfeAlgo(normdata)
-    # rfe clean or norm data
+    # rfe clean or norm data?
     splitdata = splitTrainTest(normdata, .8)
     linreg = linearRegression(splitdata)
     linreggraph = graphModelResults(linreg, 'Training')
@@ -168,7 +161,6 @@ def fullAnalysis(maindata):
     bestalgo = fullsum[1]
     results = [overview, howcleanedvars, rawdistplot, cleandistplot, heatmap, rfelist, linreggraph, linregtable, knngraph, knntable, extreegraph, extreetable, xgboostgraph, xgboosttable, summary, bestalgo]
     return results
-    # return array of all visuals needed
 
 
 def fullPredict(future, bestalgo):
@@ -266,7 +258,7 @@ def cleanColumns(fulldata):
             dropvar = varnames[k]
             cleandata = cleandata.drop([dropvar], axis=1)
             session["nullvar"].append(dropvar)
-            # do some fillna here? (if # of cols dropped here is too much)
+            # do some fillna here instead? (if # of cols dropped here is too much)
     session["datetimes"] = []
     session["smallDisc"] = []
     session["medDisc"] = []
@@ -277,12 +269,14 @@ def cleanColumns(fulldata):
                 cleandata[varname] = pd.to_numeric(cleandata[varname])
             except Exception:
                 cleandata = discClean(cleandata, varname)
-    # check for numbers (convert all to numeric at end to be safe)?
     cleandata = cleandata.sort_index(axis = 1) 
     cleandata[targetvar] = targetdata
     cleandata = cleandata.dropna()
+    session["tarDisc"] = []
+    cleandata = cleanTarget(cleandata, targetvar)
+    # if data is too big and date is empty shuffle and head it (aka replace 5000)
+    cleandata = cleandata.head(5000)
     return cleandata
-    # add clean colums with appending train and prod
 
 
 def discClean(cleandata, varname):
@@ -293,8 +287,8 @@ def discClean(cleandata, varname):
     except Exception:
         # instead of size, change it to nominal vs ordinal
         univals = len(cleandata[varname].unique())
-        # change .2 once meddisc is updated
-        if (univals < 2) or (univals/len(cleandata)>.2):
+        # change upeer bound of .2 based on research 
+        if (univals < 2) or (univals/len(cleandata)>1):
             cleandata = bigDisc(cleandata, varname)
         elif (univals < 21):
             cleandata = smallDisc(cleandata, varname)
@@ -325,7 +319,7 @@ def medDisc(cleandata, varname):
     # mean encoding?
     # https://towardsdatascience.com/all-about-categorical-variable-encoding-305f3361fd02
     # save mappings to apply to future data
-    univals = np.sort(cleandata[varname].unique())
+    univals = np.sort(cleandata[[varname]].dropna()[varname].unique())
     arbindex = (range(len(univals)))
     valdict = dict(zip(univals, arbindex))
     cleandata[varname] = cleandata[varname].replace(valdict)
@@ -334,14 +328,31 @@ def medDisc(cleandata, varname):
 
 
 def smallDisc(cleandata, varname):
-    univals = np.sort(cleandata[varname].unique())
+    univals = np.sort(cleandata[[varname]].dropna()[varname].unique())
     dummies = pd.get_dummies(cleandata[varname])
     dummies = dummies.sort_index(axis = 1)
     dummies.columns = [varname + '_' + str(col) for col in dummies.columns]
     cleandata = pd.concat([cleandata, dummies], axis=1)
     cleandata = cleandata.drop([varname], axis=1)
     session["smallDisc"].append([varname,univals])
-    # change this to work with testing
+    return cleandata
+
+
+def cleanTarget(cleandata, targetvar):
+    if(cleandata[targetvar].dtype != np.float64 and cleandata[targetvar].dtype != np.int64):
+        try:
+            cleandata[targetvar] = pd.to_numeric(cleandata[targetvar])
+        except Exception:
+            cleandata = targetMap(cleandata, targetvar)
+    return cleandata
+
+
+def targetMap(cleandata, targetvar):
+    univals = np.sort(cleandata[[targetvar]].dropna()[targetvar].unique())
+    arbindex = (range(len(univals)))
+    valdict = dict(zip(univals, arbindex))
+    cleandata[targetvar] = cleandata[targetvar].replace(valdict)
+    session["tarDisc"] = [[targetvar,valdict]]
     return cleandata
 
 
@@ -357,6 +368,8 @@ def revealClean():
         cleanedvars.append(str(k) + ' was dropped for being uninformative.')
     for k in session["nullvar"]:
         cleanedvars.append(str(k) + ' was dropped for having too many nulls.')
+    for k in session["tarDisc"]:
+        cleanedvars.append(str(k[0]) + ' was mapped on to: ' + str(k[1]))
     return cleanedvars
 
 
@@ -437,7 +450,6 @@ def rfeAlgo(cleandata):
     ranks = ranks.set_index('Rank')
     # replace with ranks.index = ranks['Rank'].values?
     ranks = ranks.head(15).to_html(classes='rferank')
-    # test bigger data and change 15 to max stretch
     # add corr matrix results?
     return ranks
 
@@ -534,11 +546,11 @@ def graphModelResults(results, split):
     testoutput = results[4]
     predictedtest = results[5]
     if split == 'Training':
-        data = [go.Scatter(x=trainindex, y=trainoutput, name='Ground Truth'), go.Scatter(x=trainindex, y=predictedtrain, name='Prediction')]
+        data = [go.Scatter(x=trainindex, y=trainoutput, name='Ground Truth', mode='lines'), go.Scatter(x=trainindex, y=predictedtrain, name='Prediction', mode='lines')]
         graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
         return graphJSON
     else:
-        data = [go.Scatter(x=testindex, y=testoutput, name='Ground Truth'), go.Scatter(x=testindex, y=predictedtest, name='Prediction')]
+        data = [go.Scatter(x=testindex, y=testoutput, name='Ground Truth', mode='lines'), go.Scatter(x=testindex, y=predictedtest, name='Prediction', mode='lines')]
         graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
         return graphJSON
 
