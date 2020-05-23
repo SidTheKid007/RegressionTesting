@@ -137,7 +137,9 @@ def fullAnalysis(maindata):
     rawdistplot = makeDists(fulldata, fulldata.columns.values[0])
     cleandistplot = makeDists(normdata, normdata.columns.values[0])
     heatmap = corrMatrix(normdata)
-    rfelist = rfeAlgo(normdata)
+    rfelist = ''
+    if (len(normdata.columns.values) > 2):
+        rfelist = rfeAlgo(normdata)
     # rfe clean or norm data?
     splitdata = splitTrainTest(normdata, .8)
     linreg = linearRegression(splitdata)
@@ -274,8 +276,9 @@ def cleanColumns(fulldata):
     cleandata = cleandata.dropna()
     session["tarDisc"] = []
     cleandata = cleanTarget(cleandata, targetvar)
-    # if data is too big and date is empty shuffle and head it (aka replace 5000)
-    cleandata = cleandata.head(5000)
+    # if data is too big and date is empty shuffle and head it (aka replace 5000 )
+    if (len(cleandata.columns.values) > 10):
+        cleandata = cleandata.head(5000)
     return cleandata
 
 
@@ -288,7 +291,7 @@ def discClean(cleandata, varname):
         # instead of size, change it to nominal vs ordinal
         univals = len(cleandata[varname].unique())
         # change upeer bound of .2 based on research 
-        if (univals < 2) or (univals/len(cleandata)>1):
+        if ((univals < 2) or (univals/len(cleandata) > .2)) and (len(cleandata.columns.values) > 2):
             cleandata = bigDisc(cleandata, varname)
         elif (univals < 21):
             cleandata = smallDisc(cleandata, varname)
