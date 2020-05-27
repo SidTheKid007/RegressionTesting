@@ -16,12 +16,19 @@
     	h1 { 
     		text-align:center; 
     		color:black; 
-    	} 
-        input {
-            color:black; 
+    	}
+        .selbut {
+            margin: auto;
+            text-align:center; 
+            color:black;
+            width: 10.5%;
+            font-size: 0.9em;
         }
-        .lineitem {
-            position: relative;
+        .filesel {
+            margin: auto;
+            text-align:center;
+            width: 16.5%;
+            font-size: 0.9em;
         }
 	</style> 
 </head>
@@ -32,16 +39,19 @@
         	<h1> Regression Testing </h1>
             <form enctype=multipart/form-data method="POST">
                 <h3>Select the csv file that you want analyzed</h3>
-                <div class="lineitem">
-                    <input name="maindata" type="file" size="600" required>
-                </div>
+                <input name="maindata" class="filesel" type="file" required>
+                <br>
                 <!--<br>
                 <div class="lineitem">
                     <label>Path to prediction data: </label>
                     <input name="future" type="file">
                 </div>-->
                 <br>
-                <input type="submit">
+                <input class="selbut" type="Submit">
+            </form>
+            <br>
+            <form action="example">
+                <input class="selbut" type="submit" value="Try Example" />
             </form>
         </div>
     </div>

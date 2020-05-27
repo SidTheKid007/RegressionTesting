@@ -32,13 +32,13 @@ socketio = SocketIO(app)
 
 
 @app.route('/')
-def index():
+def homeForm():
     session.clear()
-    return render_template('my-form.html')
+    return render_template('home-form.html')
 
 
 @app.route('/', methods=['POST'])
-def my_form_post():
+def loadMain():
     # fixflask_uploads.UploadNotAllowed error
     try:
         maindata = 'static/data/' + csvdatafiles.save(request.files['maindata'])
@@ -71,6 +71,16 @@ def my_form_post():
         if path.exists(maindata):
             remove(maindata)
         return render_template('error-page.html')
+
+
+@app.route('/example')
+def loadExample():
+    maindata = 'static/example/avocadoCA.csv'
+    results = fullAnalysis(maindata)
+    allvars = session["fulldata"].columns.values
+    cleanvars = session["normdata"].columns.values
+    target = cleanvars[-1]
+    return render_template('index.html', sumtables=results[0], howcleanedvars=results[1], allvars=allvars, cleanvars=cleanvars, target=target, rawdistplot=results[2], cleandistplot=results[3], heatmap=results[4], rfelist=results[5], linreggraph=results[6], linregtable=results[7], knngraph=results[8], knntable=results[9], extreegraph=results[10], extreetable=results[11], xgboostgraph=results[12], xgboosttable=results[13], finalsummary=results[14])
 
 
 def clearCache():
